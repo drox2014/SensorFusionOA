@@ -1,14 +1,14 @@
 import os
+
+import PIL.Image as Image
+import cv2
 import numpy as np
 import tensorflow as tf
-import cv2
+from PIL import ImageDraw
+from sklearn.externals import joblib
 
 from utils import label_map_util
 from utils import visualization_utils as vis_util
-
-from sklearn.externals import joblib
-import PIL.Image as Image
-from PIL import ImageDraw
 
 CWD_PATH = os.getcwd()
 PATH_TO_CKPT = os.path.join(CWD_PATH, 'data', 'object_detection_models', 'faster_rcnn_inception_v2.pb')
