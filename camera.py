@@ -1,14 +1,18 @@
+from multiprocessing import Queue
+
 import cv2
-from process_control import ProcessManager
+
+
+# from process_control import ProcessManager
 # from operations import focus, count, color
 
-command_classes = ['count', 'color', 'focus', 'no_op']
+# command_classes = ['count', 'color', 'focus', 'no_op']
 
 
 class CameraFeed:
-    def __init__(self, camera_port):
+    def __init__(self, camera_port, queue: Queue):
         self.camera_port = camera_port
-        self.process_m = ProcessManager()
+        self.queue = queue
         self.operation = 3
         self.is_zoomed = True
         self.frame_size = 608
@@ -20,24 +24,46 @@ class CameraFeed:
         self.capture.set(3, 608)
         self.capture.set(4, 608)
 
-        self.process_m.start_engines()
-
-    def process_frame(self, operation, object_id):
-        self.operation = int(operation[0])
-        self.object_id = object_id
-        print(command_classes[self.operation], self.operation)
+    # def process_frame(self, operation, object_id):
+    #     self.operation = int(operation[0])
+    #     self.object_id = object_id
+    #     print(command_classes[self.operation], self.operation)
 
     def zoom_in(self):
         self.is_zoomed = True
+        # if self.scale == 50:
+        #     self.is_zoomed = True
+        #     self.scale -= 5
+        # elif self.scale > 30:
+        #     self.scale -= 5
 
     def zoom_out(self):
         self.is_zoomed = False
+        # if self.scale == 50:
+        #     self.is_zoomed = False
+        #     self.scale += 5
+        # elif self.scale < 50:
+        #     self.scale += 5
+
+    def perform(self, gesture):
+        print(gesture)
+        if gesture == 2:
+            print("CameraFeed:zoom_in")
+            self.zoom_in()
+        elif gesture == 3:
+            print("CameraFeed:zoom_out")
+            self.zoom_out()
 
     def start_camera(self):
+
         while True:
             # Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
             # i.e. a single-column array, where each item in the column has the pixel RGB value
+            while not self.queue.empty():
+                self.perform(gesture=self.queue.get())
+
             ret, frame = self.capture.read()
+            # frame = detect_objects(frame)
             # get the webcam size
             if self.is_zoomed:
                 # get the webcam size
@@ -66,13 +92,7 @@ class CameraFeed:
             # Press 'q' to quit
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
-                self.process_m.start_engines()
                 break
-            elif key == ord('a'):
-                continue
-                # self.scale -= 5
-                # self.is_zoomed = not self.is_zoomed
-
         # Clean up
         self.capture.release()
         cv2.destroyAllWindows()

@@ -1,10 +1,17 @@
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 
-from DoubleFeatureLSTM import GestureEngine
+from camera import CameraFeed
+from gestures_recognition import GestureEngine
 
 
-def start_gesture_engine():
-    GestureEngine()
+def start_camera_feed(queue: Queue):
+    cf = CameraFeed(camera_port=0, queue=queue)
+    cf.start_camera()
+
+
+def start_gesture_recognition(queue: Queue):
+    ge = GestureEngine(queue=queue)
+    ge.start_prediction()
 
 
 class ProcessManager:
@@ -12,11 +19,24 @@ class ProcessManager:
         self.procs = []
 
     def start_engines(self):
-        print('Starting process for gesture engine...')
-        proc = Process(target=start_gesture_engine)
-        self.procs.append(proc)
-        print('Started process for gesture engine...')
-        proc.start()
+        com_queue = Queue()
+        print("Starting Engines...")
+
+        engines = [start_camera_feed, start_gesture_recognition]
+        for engine in engines:
+            proc = Process(target=engine, args=(com_queue,))
+            self.procs.append(proc)
+            proc.start()
+
+        print("Waiting for Engines...")
+        for proc in self.procs:
+            try:
+                proc.join()
+            except KeyboardInterrupt:
+                proc.terminate()
+                proc.join()
+
+        print("Stopping Engines...")
 
     def stop_engines(self):
         # complete the processes
