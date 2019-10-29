@@ -10,5 +10,5 @@ A sensor fusion framwork that fuses audio and video streams together
 # Run Main file
 
 ```
-python main.py
+LD_PRELOAD=./libLeap.so python main.py
 ```
