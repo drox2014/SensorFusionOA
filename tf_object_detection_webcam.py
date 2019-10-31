@@ -19,7 +19,7 @@ INPUT_SIZE = 608
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS_TFOD_API, use_display_name=True)
 
 
-vid = cv2.VideoCapture(0)
+vid = cv2.VideoCapture(2)
 vid.set(3, 608)
 vid.set(4, 608)
 

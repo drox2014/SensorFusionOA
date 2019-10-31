@@ -23,8 +23,8 @@ cfg                             = __C
 __C.YOLO                        = edict()
 
 # Set the class name
-__C.YOLO.CLASSES                = "/home/darshanakg/Projects/yolo-training/dataset/dataset.names"
-__C.YOLO.ANCHORS                = "./data/anchors/basline_anchors.txt"
+__C.YOLO.CLASSES                = "/home/darshanakg/Projects/SensorFusion/data/classes/class.names"
+__C.YOLO.ANCHORS                = "/home/darshanakg/Projects/SensorFusion/data/anchors/basline_anchors.txt"
 __C.YOLO.MOVING_AVE_DECAY       = 0.9995
 __C.YOLO.STRIDES                = [8, 16, 32]
 __C.YOLO.ANCHOR_PER_SCALE       = 3

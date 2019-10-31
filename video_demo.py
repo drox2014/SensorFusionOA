@@ -5,11 +5,11 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from PIL import Image
-
+from core.config import cfg
 import core.utils as utils
 
 return_elements = ["input/input_data:0", "pred_sbbox/concat_2:0", "pred_mbbox/concat_2:0", "pred_lbbox/concat_2:0"]
-pb_file = "data/object_detection_models/yolov3_coco_v1.1.pb"
+pb_file = "data/models/yolov3_coco_v1.1.pb"
 video_path = 0
 num_classes = 10
 input_size = 608
@@ -20,6 +20,7 @@ sess = tf.Session(graph=graph)
 vid = cv2.VideoCapture(video_path)
 vid.set(3, 608)
 vid.set(4, 608)
+class_names = utils.read_class_names(cfg.YOLO.CLASSES)
 
 while True:
     ret, frame = vid.read()
@@ -42,12 +43,12 @@ while True:
 
     bboxes = utils.postprocess_boxes(pred_bbox, frame_size, input_size, 0.3)
     bboxes = utils.nms(bboxes, 0.45, method='nms')
-    image = utils.draw_bbox(frame, bboxes)
+    image = utils.draw_bbox(frame, bboxes, classes=class_names)
 
     curr_time = time.time()
     exec_time = curr_time - prev_time
     result = np.asarray(image)
-    info = "time: %.2f ms" % (1000 * exec_time)
+    print("FPS: %.2f" % (1 / exec_time))
     cv2.namedWindow("result", cv2.WINDOW_AUTOSIZE)
     result = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cv2.imshow("result", result)
