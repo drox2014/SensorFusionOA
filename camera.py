@@ -11,6 +11,7 @@ import cv2
 
 class CameraFeed:
     def __init__(self, camera_port, queue: Queue):
+        from object_detection import VisionEngine
         self.camera_port = camera_port
         self.queue = queue
         self.operation = 3
@@ -18,6 +19,7 @@ class CameraFeed:
         self.frame_size = 608
         self.scale = 40
         self.object_id = -1
+        self.ve = VisionEngine()
 
         # Initialize webcam feed
         self.capture = cv2.VideoCapture(self.camera_port)
@@ -86,6 +88,9 @@ class CameraFeed:
             #     count(frame, self.object_id)
             # elif self.operation == 1:
             #     color(frame, self.object_id)
+
+            bboxes = self.ve.get_frcnn_prediction(frame)
+            self.ve.draw_bbox(frame, bboxes)
 
             # All the results have been drawn on the frame, so it's time to display it.
             cv2.imshow('Object detector', frame)

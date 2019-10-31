@@ -8,21 +8,13 @@ import numpy as np
 import Leap
 
 
-# import tensorflow as tf
-# from tensorflow import keras
-
-
 class GestureEngine:
     def __init__(self, queue: Queue):
-        # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        # os.environ["CUDA_VISIBLE_DEVICES"] = ""
         self.command_classes = ['Pointing', 'Capture', 'ZoomIn', 'ZoomOut', 'Roaming']
         self.queue = queue
         self.prev_gesture = -1
 
     def run(self, controller, model):
-        # if not hasattr(self.run, "running"):
-        #     self.run.running = True
         gesture_sequence = np.array([])
         while True:
             frame = controller.frame()
