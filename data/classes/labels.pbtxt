@@ -1,0 +1,49 @@
+item {
+  id: 1
+  name: 'laptop'
+}
+
+item {
+  id: 2
+  name: 'mobile'
+}
+
+item {
+  id: 3
+  name: 'book'
+}
+
+item {
+  id: 4
+  name: 'bottle'
+}
+
+item {
+  id: 5
+  name: 'pen'
+}
+
+item {
+  id: 6
+  name: 'cup'
+}
+
+item {
+  id: 7
+  name: 'mouse'
+}
+
+item {
+  id: 8
+  name: 'keyboard'
+}
+
+item {
+  id: 9
+  name: 'hand'
+}
+
+item {
+  id: 10
+  name: 'monitor'
+}
