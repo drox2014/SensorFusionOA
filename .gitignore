@@ -105,3 +105,9 @@ venv.bak/
 .idea
 
 data/models
+
+#zamia
+zamia/conf
+zamia/data
+zamia/exp
+zamia/lstm.h5
