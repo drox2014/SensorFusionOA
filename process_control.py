@@ -9,8 +9,8 @@ def start_camera_feed(queue: Queue):
     cf.start_camera()
 
 
-def start_gesture_recognition(queue: Queue):
-    ge = GestureEngine(queue=queue)
+def start_gesture_recognition():
+    ge = GestureEngine()
     ge.start_prediction()
 
 
