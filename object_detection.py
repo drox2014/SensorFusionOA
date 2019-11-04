@@ -14,7 +14,7 @@ class VisionEngine:
         # define paths to load the models
         self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'faster_rcnn.pb')
         self.PATH_TO_YOLO_CKPT = os.path.join('data', 'models', 'yolo_v3.pb')
-        self.PATH_TO_LABELS_TFOD_API = os.path.join('data', 'labels.pbtxt')
+        self.PATH_TO_LABELS_TFOD_API = os.path.join('data', 'classes', 'labels.pbtxt')
         # define constants
         self.NUM_CLASSES = 10
         self.INPUT_SIZE = 608
@@ -44,7 +44,7 @@ class VisionEngine:
                 tf.import_graph_def(od_graph_def, name='')
 
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.9))
-                                                     , graph=self.detection_graph)
+                               , graph=self.detection_graph)
         self.yolo_tensors = self.get_tensors(tensor_names=["input/input_data:0",
                                                            "pred_sbbox/concat_2:0",
                                                            "pred_mbbox/concat_2:0",

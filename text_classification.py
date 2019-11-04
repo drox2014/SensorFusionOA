@@ -26,6 +26,13 @@ class TextClassificationEngine:
         self.__labels = ['Locate', 'Describe', 'No_Op']
         self.__dataset_path = "/home/darshanakg/Projects/SensorFusion/zamia/data/dataset.txt"
         self.__tokenizer = self.__init_tokenizer()
+        # Initializing the model
+        config = tf.ConfigProto(intra_op_parallelism_threads=4,
+                                inter_op_parallelism_threads=4,
+                                allow_soft_placement=True,
+                                device_count={'CPU': 2, 'GPU': 0})
+        session = tf.Session(config=config)
+        tf.keras.backend.set_session(session)
         self.__model = tf.keras.models.load_model("/home/darshanakg/Projects/SensorFusion/zamia/lstm.h5")
 
     def __init_tokenizer(self):

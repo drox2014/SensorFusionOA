@@ -33,6 +33,8 @@ SILENCE_LIMIT = 1
 # recording finishes and the file is delivered.
 
 PREV_AUDIO = 0.5
+
+
 # Previous audio (in seconds) to prepend. When noise
 # is detected, how much of previously recorded audio is
 # prepended. This helps to prevent chopping the begining
@@ -70,7 +72,7 @@ class SpeechRecognizer:
         self.__save_path = self.__dir_path + '/data/test'
         self.__initialize_path()
 
-    def __save_speech(self, data, p):
+    def save_speech(self, data, p):
         """ Saves mic data to temporary WAV file. Returns filename of saved
             file """
         filename = os.path.join(self.__save_path, self.__wave_file)
@@ -129,48 +131,3 @@ class SpeechRecognizer:
             decoder_opts=decoder_opts,
             decodable_opts=decodable_opts)
         return asr
-
-    def main(self):
-        asr = self.init_asr_kaldi()
-        p, stream = open_audio_stream()
-
-        print("[Speech] Listening...")
-
-        audio2send = []
-        slid_win = deque(maxlen=int(SILENCE_LIMIT * REL) + 1)
-        prev_audio = deque(maxlen=int(PREV_AUDIO * REL) + 1)
-        started = False
-
-        while True:
-            try:
-                cur_data = stream.read(CHUNK)
-                slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
-                if sum([x > THRESHOLD for x in slid_win]) > 0:
-                    if not started:
-                        started = True
-                    audio2send.append(cur_data)
-                elif started is True:
-                    # The limit was reached, finish capture and deliver.
-                    filename = self.__save_speech(list(prev_audio) + audio2send, p)
-                    r = self.recognize_speech(asr)
-                    print("[Speech] Detected speech: ", r)
-                    # Remove temp file. Comment line to review.
-                    os.remove(filename)
-                    # Reset all
-                    started = False
-                    slid_win = deque(maxlen=int(SILENCE_LIMIT * REL) + 1)
-                    prev_audio = deque(maxlen=int(PREV_AUDIO * REL) + 1)
-                    audio2send = []
-                else:
-                    prev_audio.append(cur_data)
-            except KeyboardInterrupt:
-                break
-
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-
-
-if __name__ == "__main__":
-    sr = SpeechRecognizer()
-    sr.main()
