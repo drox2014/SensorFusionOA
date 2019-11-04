@@ -6,7 +6,7 @@ from speech_recognition import SpeechEngine
 
 
 def start_camera_feed(queue: Queue):
-    cf = CameraFeed(camera_port=2, queue=queue)
+    cf = CameraFeed(camera_port=0, queue=queue)
     cf.start_camera()
 
 
