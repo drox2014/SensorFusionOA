@@ -1,4 +1,4 @@
-from zamia.decode_live_smart_test import SpeechRecognizer
+from zamia.decode_mic import SpeechRecognizer
 import os
 # from online_asr.online_asr import
 
