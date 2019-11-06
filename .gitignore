@@ -110,4 +110,4 @@ data/models
 zamia/conf
 zamia/data
 zamia/exp
-zamia/lstm.h5
+data/models/text_classification_lstm.h5

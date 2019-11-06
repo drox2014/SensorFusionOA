@@ -1,5 +1,5 @@
 from multiprocessing import Queue
-
+import numpy as np
 import cv2
 
 
@@ -20,6 +20,7 @@ class CameraFeed:
         self.scale = 40
         self.object_id = -1
         self.ve = VisionEngine()
+        self.__last_operation = {"operation": None}
 
         # Initialize webcam feed
         self.capture = cv2.VideoCapture(self.camera_port)
@@ -48,23 +49,25 @@ class CameraFeed:
         #     self.scale += 5
 
     def perform(self, gesture):
-        print(gesture)
-        if gesture == 2:
-            print("CameraFeed:zoom_in")
-            self.zoom_in()
-        elif gesture == 3:
-            print("CameraFeed:zoom_out")
-            self.zoom_out()
+        self.__last_operation = gesture
+        # if gesture == 2:
+        #     print("CameraFeed:zoom_in")
+        #     self.zoom_in()
+        # elif gesture == 3:
+        #     print("CameraFeed:zoom_out")
+        #     self.zoom_out()
 
     def start_camera(self):
 
         while True:
             # Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
             # i.e. a single-column array, where each item in the column has the pixel RGB value
+
+            ret, frame = self.capture.read()
+
             while not self.queue.empty():
                 self.perform(gesture=self.queue.get())
 
-            ret, frame = self.capture.read()
             # frame = detect_objects(frame)
             # get the webcam size
             if self.is_zoomed:
@@ -81,16 +84,21 @@ class CameraFeed:
                 cropped = frame[minX:maxX, minY:maxY]
                 frame = cv2.resize(cropped, (width, height))
 
-            # frame_expanded = np.expand_dims(frame, axis=0)
-            # if self.operation == 2:
-            #     focus(frame, self.object_id)
-            # elif self.operation == 0:
-            #     count(frame, self.object_id)
-            # elif self.operation == 1:
-            #     color(frame, self.object_id)
+            if self.__last_operation["operation"] is None:
+                continue
+            elif self.__last_operation["operation"] == "Locate":
+                # print("[Visual] Performing locate operation...")
+                bboxes = self.ve.get_frcnn_prediction(image=frame, object_id=self.__last_operation["object_id"])
+                if self.__last_operation["multiple"] and len(bboxes) > 1:
+                    print("Ambiguous operation...")
 
-            bboxes = self.ve.get_frcnn_prediction(frame)
-            self.ve.draw_bbox(frame, bboxes)
+                self.ve.draw_bbox(frame, bboxes)
+            elif self.__last_operation["operation"] == "ZoomIn":
+                self.is_zoomed = True
+                self.__last_operation = {"operation": None}
+            elif self.__last_operation["operation"] == "ZoomOut":
+                self.is_zoomed = False
+                self.__last_operation = {"operation": None}
 
             # All the results have been drawn on the frame, so it's time to display it.
             cv2.imshow('Object detector', frame)

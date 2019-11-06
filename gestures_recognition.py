@@ -38,12 +38,11 @@ class GestureEngine:
                 gesture_sequence = np.append(gesture_sequence, np.array(av) / m)
                 if len(gesture_sequence) > 270:
                     prediction = model.predict(gesture_sequence[:270].reshape(1, 1, 270))
-                    # gesture = self.command_classes[np.argmax(prediction)]
                     gesture = np.argmax(prediction)
                     # self.camera_feed.perform(gesture)
                     # print(gesture)
                     if self.prev_gesture != gesture:
-                        self.queue.put(gesture)
+                        self.queue.put({"operation": self.command_classes[gesture]})
                         self.prev_gesture = gesture
 
                     gesture_sequence = gesture_sequence[90:]
@@ -57,7 +56,7 @@ class GestureEngine:
         config = tf.ConfigProto(intra_op_parallelism_threads=4,
                                 inter_op_parallelism_threads=4,
                                 allow_soft_placement=True,
-                                device_count={'CPU': 1, 'GPU': 0})
+                                device_count={'CPU': 2, 'GPU': 0})
         session = tf.Session(config=config)
         tf.keras.backend.set_session(session)
         model = tf.keras.models.load_model("./data/gesture_lstm_v9.h5")

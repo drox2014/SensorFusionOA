@@ -23,6 +23,24 @@ class TextClassificationEngine:
                                  "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no",
                                  "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "don",
                                  "should", "now"]
+        self.__object_dictionary = {64: {"object_id": 6, "multiple": True},
+                                    87: {"object_id": 4, "multiple": True},
+                                    66: {"object_id": 0, "multiple": True},
+                                    73: {"object_id": 3, "multiple": True},
+                                    83: {"object_id": 7, "multiple": True},
+                                    88: {"object_id": 9, "multiple": True},
+                                    78: {"object_id": 8, "multiple": True},
+                                    71: {"object_id": 5, "multiple": True},
+                                    65: {"object_id": 2, "multiple": True},
+                                    10: {"object_id": 6, "multiple": False},
+                                    19: {"object_id": 4, "multiple": False},
+                                    11: {"object_id": 0, "multiple": False},
+                                    18: {"object_id": 3, "multiple": False},
+                                    21: {"object_id": 7, "multiple": False},
+                                    20: {"object_id": 9, "multiple": False},
+                                    14: {"object_id": 8, "multiple": False},
+                                    13: {"object_id": 5, "multiple": False},
+                                    16: {"object_id": 2, "multiple": False}}
         self.__labels = ['Locate', 'Describe', 'No_Op']
         self.__dataset_path = "/home/darshanakg/Projects/SensorFusion/zamia/data/dataset.txt"
         self.__tokenizer = self.__init_tokenizer()
@@ -33,7 +51,7 @@ class TextClassificationEngine:
                                 device_count={'CPU': 2, 'GPU': 0})
         session = tf.Session(config=config)
         tf.keras.backend.set_session(session)
-        self.__model = tf.keras.models.load_model("/home/darshanakg/Projects/SensorFusion/zamia/lstm.h5")
+        self.__model = tf.keras.models.load_model("data/models/text_classification_lstm.h5")
 
     def __init_tokenizer(self):
         df = pd.read_csv(self.__dataset_path, names=['sentence', 'operation'], sep=',', engine='python')
@@ -71,10 +89,25 @@ class TextClassificationEngine:
         seq = self.__tokenizer.texts_to_sequences(filtered_commands)
         padded = tf.keras.preprocessing.sequence.pad_sequences(seq, maxlen=self.__max_seq_length)
         pred = self.__model.predict(padded)
-        return self.__labels[np.argmax(pred)]
+        obj = self.__find_object(seq)
+        return {
+            "operation": self.__labels[np.argmax(pred)],
+            "object_id": obj["object_id"],
+            "multiple": obj["multiple"]
+        }
+
+    def __find_object(self, tokens):
+        for token in tokens[0]:
+            if token in self.__object_dictionary:
+                return self.__object_dictionary[token]
+        return {"object_id": -1, "multiple": False}
 
 
 if __name__ == "__main__":
     e = TextClassificationEngine()
-    new_command = 'What is this pen'
-    print("Predicted Class: ", e.get_sentiment(new_command))
+
+    object_classes = ['laptop', 'phones', 'books', 'bottle', 'pen', 'cups', 'keyboard', 'mouse', 'monitor']
+    for c in object_classes:
+        print(e.get_sentiment(c))
+    # new_command = 'What is this pen'
+    # print("Predicted Class: ", e.get_sentiment(new_command))

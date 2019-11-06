@@ -1,11 +1,13 @@
 from zamia.decode_mic import *
+from multiprocessing import Queue
 import os
 
 
 class SpeechEngine:
-    def __init__(self):
+    def __init__(self, queue: Queue):
         self.sr = SpeechRecognizer()
         self.asr = self.sr.init_asr_kaldi()
+        self.__queue = queue
 
     def start_recognition(self):
         from text_classification import TextClassificationEngine
@@ -29,9 +31,10 @@ class SpeechEngine:
                 elif started is True:
                     # The limit was reached, finish capture and deliver.
                     filename = self.sr.save_speech(list(prev_audio) + audio2send, p)
-                    r = self.sr.recognize_speech(self.asr)
-                    s = te.get_sentiment(r)
-                    print("[Speech] Detected speech: %s [%s]" % (r, s))
+                    text = self.sr.recognize_speech(self.asr)
+                    sentiment = te.get_sentiment(text)
+                    self.__queue.put(sentiment)
+                    print("[Speech] Detected speech: %s [%s]" % (text, sentiment["operation"]))
                     # Remove temp file. Comment line to review.
                     os.remove(filename)
                     # Reset all

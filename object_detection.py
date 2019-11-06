@@ -12,7 +12,7 @@ from utils import label_map_util
 class VisionEngine:
     def __init__(self):
         # define paths to load the models
-        self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'faster_rcnn.pb')
+        self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'ssd_inception.pb')
         self.PATH_TO_YOLO_CKPT = os.path.join('data', 'models', 'yolo_v3.pb')
         self.PATH_TO_LABELS_TFOD_API = os.path.join('data', 'classes', 'labels.pbtxt')
         # define constants
@@ -58,7 +58,7 @@ class VisionEngine:
     def get_tensors(self, tensor_names):
         return [self.detection_graph.get_tensor_by_name(n) for n in tensor_names]
 
-    def get_yolo_prediction(self, image):
+    def get_yolo_prediction(self, image, object_id=None):
         image_data = self.yolo_preporcess(image)
         image_data = np.expand_dims(image_data, axis=0)
         pred_sbbox, pred_mbbox, pred_lbbox = self.sess.run([
@@ -66,9 +66,9 @@ class VisionEngine:
             self.yolo_tensors[2],
             self.yolo_tensors[3]
         ], feed_dict={self.yolo_tensors[0]: image_data})
-        return self.yolo_bboxes(pred_sbbox, pred_mbbox, pred_lbbox, frame_size=image.shape[:2])
+        return self.yolo_bboxes(pred_sbbox, pred_mbbox, pred_lbbox, image.shape[:2], object_id)
 
-    def get_frcnn_prediction(self, image):
+    def get_frcnn_prediction(self, image, object_id=None):
         image_expanded = np.expand_dims(image, axis=0)
         (boxes, scores, classes, num) = self.sess.run([
             self.frcnn_tensors[1],
@@ -76,6 +76,8 @@ class VisionEngine:
             self.frcnn_tensors[3],
             self.frcnn_tensors[4]
         ], feed_dict={self.frcnn_tensors[0]: image_expanded})
+        if object_id:
+            return self.frcnn_bboxes_filter(image, scores, classes, boxes, num, 0.75, object_id)
         return self.frcnn_bboxes(image, scores, classes, boxes, num, 0.75)
 
     def yolo_preporcess(self, image):
@@ -90,12 +92,14 @@ class VisionEngine:
         image_paded[dh:nh + dh, dw:nw + dw, :] = image_resized
         return image_paded / 255.
 
-    def yolo_bboxes(self, pred_sbbox, pred_mbbox, pred_lbbox, frame_size):
+    def yolo_bboxes(self, pred_sbbox, pred_mbbox, pred_lbbox, frame_size, object_id):
         pred_bbox = np.concatenate([np.reshape(pred_sbbox, (-1, 5 + self.NUM_CLASSES)),
                                     np.reshape(pred_mbbox, (-1, 5 + self.NUM_CLASSES)),
                                     np.reshape(pred_lbbox, (-1, 5 + self.NUM_CLASSES))], axis=0)
 
         bboxes = utils.postprocess_boxes(pred_bbox, frame_size, self.INPUT_SIZE, 0.3)
+        if object_id:
+            return utils.nms_filter(bboxes, 0.45, method='nms', object_id=object_id)
         return utils.nms(bboxes, 0.45, method='nms')
 
     def frcnn_bboxes(self, image, scores, classes, boxes, num, min_score_thresh):
@@ -106,6 +110,19 @@ class VisionEngine:
         bboxes = []
         for i in range(int(num[0])):
             if scores_arr[i] > min_score_thresh:
+                b = [boxes_arr[i, 1] * image_w, boxes_arr[i, 0] * image_h, boxes_arr[i, 3] * image_w,
+                     boxes_arr[i, 2] * image_h]
+                bboxes.append(np.concatenate((b, scores_arr[i], self.yolo_mapping[classes_arr[i]]), axis=None))
+        return bboxes
+
+    def frcnn_bboxes_filter(self, image, scores, classes, boxes, num, min_score_thresh, object_id):
+        image_h, image_w, _ = image.shape
+        scores_arr = np.squeeze(scores)
+        classes_arr = np.squeeze(classes).astype(np.int32)
+        boxes_arr = np.squeeze(boxes)
+        bboxes = []
+        for i in range(int(num[0])):
+            if scores_arr[i] > min_score_thresh and self.yolo_mapping[classes_arr[i]] == object_id:
                 b = [boxes_arr[i, 1] * image_w, boxes_arr[i, 0] * image_h, boxes_arr[i, 3] * image_w,
                      boxes_arr[i, 2] * image_h]
                 bboxes.append(np.concatenate((b, scores_arr[i], self.yolo_mapping[classes_arr[i]]), axis=None))
@@ -145,7 +162,7 @@ class VisionEngine:
 def main():
     ve = VisionEngine()
     # image = cv2.imread("test/20190508_163439.jpg")
-    #
+
     # yolo_bboxes = ve.get_yolo_prediction(image)
     # rcnn_bboxes = ve.get_frcnn_prediction(image)
     #

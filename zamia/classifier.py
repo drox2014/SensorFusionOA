@@ -156,13 +156,13 @@ if __name__ == '__main__':
 
     # df, tokenizer = pre_initialize()
     # model, history = lstm_train(df, tokenizer, MAX_NB_WORDS, MAX_SEQUENCE_LENGTH)
-    # model.save('lstm.h5')
+    # model.save('text_classification_lstm.h5')
     # plot_history(history)
 
     sentimentAnalyzer = SentimentAnalyzer()
     dir_path = os.path.dirname(os.path.realpath(__file__))
 
     # ====== Test ========
-    model = load_model(dir_path + '/lstm.h5')
+    model = load_model(dir_path + '/text_classification_lstm.h5')
     new_command = 'What is this pen'
     sentimentAnalyzer.get_sentiment(new_command, model)
