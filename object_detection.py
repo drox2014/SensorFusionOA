@@ -161,37 +161,37 @@ class VisionEngine:
 
 def main():
     ve = VisionEngine()
-    # image = cv2.imread("test/20190508_163439.jpg")
+    image = cv2.imread("test/2019-11-06 18_39_33.905298.jpg")
 
-    # yolo_bboxes = ve.get_yolo_prediction(image)
-    # rcnn_bboxes = ve.get_frcnn_prediction(image)
+    yolo_bboxes = ve.get_yolo_prediction(image)
+    rcnn_bboxes = ve.get_frcnn_prediction(image)
+
+    yolo_result = ve.draw_bbox(np.copy(image), yolo_bboxes)
+    rcnn_result = ve.draw_bbox(np.copy(image), rcnn_bboxes)
+    cv2.imwrite("predicted_yolo.jpg", yolo_result)
+    cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
+
+    # vid = cv2.VideoCapture(2)
+    # vid.set(3, 608)
+    # vid.set(4, 608)
     #
-    # yolo_result = ve.draw_bbox(np.copy(image), yolo_bboxes)
-    # rcnn_result = ve.draw_bbox(np.copy(image), rcnn_bboxes)
-    # cv2.imwrite("predicted_yolo.jpg", yolo_result)
-    # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
-
-    vid = cv2.VideoCapture(2)
-    vid.set(3, 608)
-    vid.set(4, 608)
-
-    while True:
-        ret, frame = vid.read()
-        prev_time = time.time()
-
-        bboxes = ve.get_frcnn_prediction(frame)
-        ve.draw_bbox(frame, bboxes)
-
-        curr_time = time.time()
-        exec_time = curr_time - prev_time
-        print("time: %.2f FPS" % (1 / exec_time))
-        cv2.imshow("Object Detector", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # Clean up
-    vid.release()
-    cv2.destroyAllWindows()
+    # while True:
+    #     ret, frame = vid.read()
+    #     prev_time = time.time()
+    #
+    #     bboxes = ve.get_frcnn_prediction(frame)
+    #     ve.draw_bbox(frame, bboxes)
+    #
+    #     curr_time = time.time()
+    #     exec_time = curr_time - prev_time
+    #     print("time: %.2f FPS" % (1 / exec_time))
+    #     cv2.imshow("Object Detector", frame)
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
+    #
+    # # Clean up
+    # vid.release()
+    # cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
