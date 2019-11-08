@@ -6,7 +6,7 @@ from speech_recognition import SpeechEngine
 
 
 def start_camera_feed(queue: Queue):
-    cf = CameraFeed(camera_port=2, queue=queue)
+    cf = CameraFeed(camera_port=0, queue=queue)
     cf.start_camera()
 
 
@@ -29,7 +29,7 @@ class ProcessManager:
         print("Starting Engines...")
 
         # engines = [start_camera_feed, start_gesture_recognition]
-        engines = [start_speech_engine, start_camera_feed]
+        engines = [start_camera_feed, start_speech_engine]
         for engine in engines:
             proc = Process(target=engine, args=(com_queue,))
             self.procs.append(proc)

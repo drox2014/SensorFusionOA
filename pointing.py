@@ -19,8 +19,8 @@ class VisionEngine:
         self.NUM_CLASSES = 10
         self.INPUT_SIZE = 608
         # load the label map
-        # self.category_index = label_map_util.create_category_index_from_labelmap(self.PATH_TO_LABELS_TFOD_API,
-        #                                                                          use_display_name=True)
+        self.category_index = label_map_util.create_category_index_from_labelmap(self.PATH_TO_LABELS_TFOD_API,
+                                                                                 use_display_name=True)
         self.class_names = utils.read_class_names(cfg.YOLO.CLASSES)
 
         # should be removed later by changing the classes order in yolo
@@ -99,7 +99,7 @@ class VisionEngine:
 
         bboxes = utils.postprocess_boxes(pred_bbox, frame_size, self.INPUT_SIZE, 0.3)
         if object_id:
-            return utils.nms_filter(bboxes, 0.45, method='nms', object_id=object_id)
+            return utils.nms_pointing(bboxes, 0.45, method='nms', object_id=object_id)
         return utils.nms(bboxes, 0.45, method='nms')
 
     def frcnn_bboxes(self, image, scores, classes, boxes, num, min_score_thresh):
@@ -161,7 +161,7 @@ class VisionEngine:
 
 def main():
     ve = VisionEngine()
-    # image = cv2.imread("test/hand2.jpg")
+    # image = cv2.imread("test/2019-11-06 18_39_33.905298.jpg")
     #
     # yolo_bboxes = ve.get_yolo_prediction(image)
     # rcnn_bboxes = ve.get_frcnn_prediction(image)
@@ -171,27 +171,71 @@ def main():
     # cv2.imwrite("predicted_yolo.jpg", yolo_result)
     # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
 
-    vid = cv2.VideoCapture(2)
-    vid.set(3, 608)
-    vid.set(4, 608)
-
+    cap = cv2.VideoCapture("/home/darshanakg/Videos/Webcam/2019-11-08-154315.webm")
+    # vid.set(3, 608)
+    # vid.set(4, 608)
+    pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     while True:
-        ret, frame = vid.read()
-        prev_time = time.time()
+        flag, frame = cap.read()
+        if flag:
+            prev_time = time.time()
 
-        bboxes = ve.get_yolo_prediction(frame)
-        ve.draw_bbox(frame, bboxes)
+            bboxes = ve.get_yolo_prediction(frame, object_id=3)
+            index = None
+            d_prev = 1000000
+            hand, hand_coor = None, None
+            for i, bbox in enumerate(bboxes):
+                if bbox[5] == 1:
+                    hand = bbox[:4]
+                    hand_coor = (int(0.125 * hand[2] + 0.875 * hand[0]), int(0.125 * hand[3] + 0.875 * hand[1]))
+                    continue
+                if hand is not None:
+                    obj = 0.5 * bbox[:4]
+                    obj_coor = (int(obj[2] + obj[0]), int(obj[3] + obj[1]))
+                    cv2.line(frame, hand_coor, obj_coor, (44, 62, 80), 2)
+                    d = np.square(hand_coor[0] - obj_coor[0]) + np.square(hand_coor[1] - obj_coor[1])
+                    if d_prev > d:
+                        d_prev = d
+                        index = i
+            if index:
+                ve.draw_bbox(frame, [bboxes[index]])
 
-        curr_time = time.time()
-        exec_time = curr_time - prev_time
-        print("time: %.2f FPS" % (1 / exec_time))
-        cv2.imshow("Object Detector", frame)
+            curr_time = time.time()
+            exec_time = curr_time - prev_time
+            print("time: %.2f FPS" % (1 / exec_time))
+            cv2.imshow('video', frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        if cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
+            # If the number of captured frames is equal to the total number of frames,
+            # we stop
+            break
 
-    # Clean up
-    vid.release()
-    cv2.destroyAllWindows()
+    # while True:
+    #     ret, frame = vid.read()
+    #     # prev_time = time.time()
+    #     #
+    #     # bboxes = ve.get_frcnn_prediction(frame)
+    #     # ve.draw_bbox(frame, bboxes)
+    #     #
+    #     # curr_time = time.time()
+    #     # exec_time = curr_time - prev_time
+    #     # print("time: %.2f FPS" % (1 / exec_time))
+    #     if vid.get(cv2.CAP_PROP_POS_FRAMES) == vid.get(cv2.CAP_PROP_FRAME_COUNT):
+    #         # If the number of captured frames is equal to the total number of frames,
+    #         # we stop
+    #         print("stop")
+    #         break
+    #
+    #     cv2.imshow("Object Detector", frame)
+    #
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
+    #
+    # # Clean up
+    # vid.release()
+    # cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
