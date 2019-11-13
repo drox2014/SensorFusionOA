@@ -1,7 +1,9 @@
+import time
 from multiprocessing import Process, Queue
 
 from camera import CameraFeed
 from gestures_recognition import GestureEngine
+from sensor_fusion import FusionEngine
 from speech_recognition import SpeechEngine
 
 
@@ -20,6 +22,10 @@ def start_speech_engine(queue: Queue):
     se.start_recognition()
 
 
+def start_fusion_engine(queue: Queue):
+    FusionEngine(_queue=queue)
+
+
 class ProcessManager:
     def __init__(self):
         self.procs = []
@@ -29,11 +35,12 @@ class ProcessManager:
         print("Starting Engines...")
 
         # engines = [start_camera_feed, start_gesture_recognition]
-        engines = [start_camera_feed, start_speech_engine]
+        engines = [start_fusion_engine, start_speech_engine]
         for engine in engines:
             proc = Process(target=engine, args=(com_queue,))
             self.procs.append(proc)
             proc.start()
+            time.sleep(5)
 
         print("Waiting for Engines...")
         for proc in self.procs:

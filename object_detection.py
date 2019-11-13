@@ -58,7 +58,7 @@ class VisionEngine:
     def get_tensors(self, tensor_names):
         return [self.detection_graph.get_tensor_by_name(n) for n in tensor_names]
 
-    def get_yolo_prediction(self, image, object_id=None):
+    def get_yolo_prediction(self, image, object_id=None, pointing=False):
         image_data = self.yolo_preporcess(image)
         image_data = np.expand_dims(image_data, axis=0)
         pred_sbbox, pred_mbbox, pred_lbbox = self.sess.run([
@@ -66,7 +66,7 @@ class VisionEngine:
             self.yolo_tensors[2],
             self.yolo_tensors[3]
         ], feed_dict={self.yolo_tensors[0]: image_data})
-        return self.yolo_bboxes(pred_sbbox, pred_mbbox, pred_lbbox, image.shape[:2], object_id)
+        return self.yolo_bboxes(pred_sbbox, pred_mbbox, pred_lbbox, image.shape[:2], object_id, pointing)
 
     def get_frcnn_prediction(self, image, object_id=None):
         image_expanded = np.expand_dims(image, axis=0)
@@ -92,13 +92,15 @@ class VisionEngine:
         image_paded[dh:nh + dh, dw:nw + dw, :] = image_resized
         return image_paded / 255.
 
-    def yolo_bboxes(self, pred_sbbox, pred_mbbox, pred_lbbox, frame_size, object_id):
+    def yolo_bboxes(self, pred_sbbox, pred_mbbox, pred_lbbox, frame_size, object_id, pointing):
         pred_bbox = np.concatenate([np.reshape(pred_sbbox, (-1, 5 + self.NUM_CLASSES)),
                                     np.reshape(pred_mbbox, (-1, 5 + self.NUM_CLASSES)),
                                     np.reshape(pred_lbbox, (-1, 5 + self.NUM_CLASSES))], axis=0)
 
         bboxes = utils.postprocess_boxes(pred_bbox, frame_size, self.INPUT_SIZE, 0.3)
-        if object_id:
+        if pointing:
+            return utils.nms_pointing(bboxes, 0.45, method='nms', object_id=object_id)
+        elif object_id:
             return utils.nms_filter(bboxes, 0.45, method='nms', object_id=object_id)
         return utils.nms(bboxes, 0.45, method='nms')
 
@@ -179,7 +181,7 @@ def main():
         ret, frame = vid.read()
         prev_time = time.time()
 
-        bboxes = ve.get_yolo_prediction(frame)
+        bboxes = ve.get_frcnn_prediction(frame)
         ve.draw_bbox(frame, bboxes)
 
         curr_time = time.time()

@@ -171,10 +171,10 @@ def main():
     # cv2.imwrite("predicted_yolo.jpg", yolo_result)
     # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
 
-    cap = cv2.VideoCapture("/home/darshanakg/Videos/Webcam/2019-11-08-154315.webm")
-    # vid.set(3, 608)
-    # vid.set(4, 608)
-    pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+    cap = cv2.VideoCapture(0)
+    cap.set(3, 608)
+    cap.set(4, 608)
+    # pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     while True:
         flag, frame = cap.read()
         if flag:
@@ -207,10 +207,10 @@ def main():
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        if cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
-            # If the number of captured frames is equal to the total number of frames,
-            # we stop
-            break
+        # if cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
+        #     If the number of captured frames is equal to the total number of frames,
+        #     we stop
+            # break
 
     # while True:
     #     ret, frame = vid.read()
