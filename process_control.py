@@ -35,7 +35,7 @@ class ProcessManager:
         print("Starting Engines...")
 
         # engines = [start_camera_feed, start_gesture_recognition]
-        engines = [start_fusion_engine, start_speech_engine]
+        engines = [start_fusion_engine]
         for engine in engines:
             proc = Process(target=engine, args=(com_queue,))
             self.procs.append(proc)

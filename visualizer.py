@@ -10,6 +10,12 @@ def stream(fusion_engine):
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
+        elif key == ord('a'):
+            fusion_engine.enqueue_command({"operation": "Locate", "object_id": 3, "multiple": False, "pointing": False})
+        elif key == ord('b'):
+            fusion_engine.enqueue_command({"operation": "Locate", "object_id": 3, "multiple": True, "pointing": False})
+        elif key == ord('c'):
+            fusion_engine.enqueue_command({"operation": "Locate", "object_id": 3, "multiple": False, "pointing": True})
         # Clean up
     cv2.destroyAllWindows()
 

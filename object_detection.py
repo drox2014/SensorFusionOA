@@ -173,7 +173,7 @@ def main():
     # cv2.imwrite("predicted_yolo.jpg", yolo_result)
     # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
 
-    vid = cv2.VideoCapture(2)
+    vid = cv2.VideoCapture(0)
     vid.set(3, 608)
     vid.set(4, 608)
 
