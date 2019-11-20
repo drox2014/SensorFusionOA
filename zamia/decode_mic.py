@@ -69,7 +69,7 @@ class SpeechRecognizer:
         kaldi.base.set_verbose_level(0)
         self.__dir_path = os.path.dirname(os.path.realpath(__file__))
         self.__wave_file = "utt1.wav"
-        self.__save_path = self.__dir_path + '/data/test'
+        self.__save_path = self.__dir_path + '/aspire_new/data/test'
         self.__initialize_path()
 
     def save_speech(self, data, p):
@@ -89,17 +89,17 @@ class SpeechRecognizer:
     def recognize_speech(self, asr):
         # Define feature pipelines as Kaldi rspecifiers
         feats_rspec = (
-                "ark:compute-mfcc-feats --config=%(path)s/conf/mfcc_hires.conf scp:%(path)s/data/test/wav.scp ark:- |"
+                "ark:compute-mfcc-feats --config=" + self.__dir_path + "/aspire_new/modified/conf/mfcc_hires.conf scp:" + self.__dir_path + "/aspire_new/data/test/wav.scp ark:- |"
                 % {
-                    "path": self.__dir_path
+                    "path": self.__dir_path + '/aspire_new/modified'
                 }
         )
         ivectors_rspec = (
-                "ark:compute-mfcc-feats --config=%(path)s/conf/mfcc_hires.conf scp:%(path)s/data/test/wav.scp ark:- | "
-                "ivector-extract-online2 --config=%(path)s/conf/ivector_extractor.conf ark:%(path)s/data/test/spk2utt "
+                "ark:compute-mfcc-feats --config=" + self.__dir_path + "/aspire_new/modified/conf/mfcc_hires.conf scp:" + self.__dir_path + "/aspire_new/data/test/wav.scp ark:- | "
+                "ivector-extract-online2 --config=" + self.__dir_path + "/aspire_new/modified/conf/ivector_extractor.conf ark:" + self.__dir_path + "/aspire_new/data/test/spk2utt "
                 "ark:- ark:- |"
                 % {
-                    "path": self.__dir_path
+                    "path": self.__dir_path + '/aspire_new/modified'
                 }
         )
 
@@ -112,8 +112,8 @@ class SpeechRecognizer:
 
     def __initialize_path(self):
         regex = "^([A-z0-9-_+]+\/){1,}([A-z0-9]+(\.(conf|mat|stats|dubm|ie|wav|scp))?)$"
-        configure_paths(self.__dir_path, '/exp/nnet3_chain/ivectors_test_hires/conf/ivector_extractor.conf', '=', regex)
-        configure_paths(self.__dir_path, '/data/test/wav.scp', ' ', regex)
+        configure_paths(self.__dir_path + '/aspire_new', '/modified/conf/ivector_extractor.conf', '=', regex)
+        configure_paths(self.__dir_path + '/aspire_new', '/data/test/wav.scp', ' ', regex)
 
     def init_asr_kaldi(self):
         # Construct recognizer
@@ -125,9 +125,9 @@ class SpeechRecognizer:
         decodable_opts.frame_subsampling_factor = 3
         decodable_opts.frames_per_chunk = 150
         asr = NnetLatticeFasterRecognizer.from_files(
-            self.__dir_path + "/exp/nnet3_chain/tdnn_f/final.mdl",
-            self.__dir_path + "/exp/nnet3_chain/tdnn_f/graph/HCLG.fst",
-            self.__dir_path + "/data/lang/words.txt",
+            self.__dir_path + "/aspire_new/exp/tdnn_7b_chain_online/final.mdl",
+            self.__dir_path + "/aspire_new/modified/graph/HCLG.fst",
+            self.__dir_path + "/aspire_new/modified/lang/words.txt",
             decoder_opts=decoder_opts,
             decodable_opts=decodable_opts)
         return asr

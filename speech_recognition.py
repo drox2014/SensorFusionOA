@@ -32,12 +32,13 @@ class SpeechEngine:
                     # The limit was reached, finish capture and deliver.
                     filename = self.sr.save_speech(list(prev_audio) + audio2send, p)
                     text = self.sr.recognize_speech(self.asr)
-                    sentiment = te.get_sentiment(text)
-                    if sentiment:
-                        self.__queue.put(sentiment)
-                        print("[Speech] Detected speech: %s [%s]" % (text, sentiment["operation"]))
-                    else:
-                        print("[Speech] Detected speech: %s [Invalid Command]" % text)
+                    print(text)
+                    # sentiment = te.get_sentiment(text)
+                    # if sentiment:
+                    #     self.__queue.put(sentiment)
+                    #     print("[Speech] Detected speech: %s [%s]" % (text, sentiment["operation"]))
+                    # else:
+                    #     print("[Speech] Detected speech: %s [Invalid Command]" % text)
                     # Remove temp file. Comment line to review.
                     os.remove(filename)
                     # Reset all
@@ -56,5 +57,6 @@ class SpeechEngine:
 
 
 if __name__ == "__main__":
-    se = SpeechEngine()
+    queue = Queue()
+    se = SpeechEngine(queue)
     se.start_recognition()

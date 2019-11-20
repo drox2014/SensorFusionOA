@@ -37,7 +37,7 @@ class FusionEngine:
         self.__operation_runtime_frames = 150
 
         # Initialize webcam feed
-        self.capture = cv2.VideoCapture(0)
+        self.capture = cv2.VideoCapture(2)
         self.capture.set(3, 608)
         self.capture.set(4, 608)
 
