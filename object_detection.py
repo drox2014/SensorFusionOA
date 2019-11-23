@@ -6,7 +6,11 @@ import tensorflow as tf
 
 import core.utils as utils
 from core.config import cfg
-from utils import label_map_util
+
+
+def get_keywords():
+    keywords = open("data/keywords")
+    return keywords.read().splitlines()
 
 
 class VisionEngine:
@@ -22,9 +26,13 @@ class VisionEngine:
         # self.category_index = label_map_util.create_category_index_from_labelmap(self.PATH_TO_LABELS_TFOD_API,
         #                                                                          use_display_name=True)
         self.class_names = utils.read_class_names(cfg.YOLO.CLASSES)
-
+        self.keywords = get_keywords()
         # should be removed later by changing the classes order in yolo
         self.yolo_mapping = {1: 6, 2: 4, 3: 0, 4: 3, 5: 7, 6: 9, 7: 5, 8: 8, 9: 1, 10: 2}
+
+        self.background = cv2.imread("data/overlay-ar.png")
+        self.background = cv2.resize(self.background, (640, 480))
+        self.primary_color = (60, 76, 231)
 
         # Load the models into session
         self.detection_graph = tf.Graph()
@@ -43,8 +51,10 @@ class VisionEngine:
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name='')
 
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.9))
-                               , graph=self.detection_graph)
+        config = tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.9))
+        config.gpu_options.allow_growth = True
+
+        self.sess = tf.Session(config= config, graph=self.detection_graph)
         self.yolo_tensors = self.get_tensors(tensor_names=["input/input_data:0",
                                                            "pred_sbbox/concat_2:0",
                                                            "pred_mbbox/concat_2:0",
@@ -135,30 +145,51 @@ class VisionEngine:
         c1, c2 = (int(xmin * image_w), int(ymin * image_h)), (int(xmax * image_w), int(ymax * image_h))
         cv2.rectangle(image, c1, c2, (255, 255, 0), 2)
 
+    def draw_rect(self, frame, pt1, pt2):
+        cv2.rectangle(frame, pt1, pt2, (185, 128, 41), 2)
+        cv2.line(frame, (pt1[0] + 20, pt1[1]), (pt2[0] - 20, pt1[1]), (80, 62, 44), 1)
+        cv2.line(frame, (pt1[0] + 20, pt2[1]), (pt2[0] - 20, pt2[1]), (80, 62, 44), 1)
+        cv2.line(frame, (pt1[0], pt1[1] + 20), (pt1[0], pt2[1] - 20), (80, 62, 44), 1)
+        cv2.line(frame, (pt2[0], pt1[1] + 20), (pt2[0], pt2[1] - 20), (80, 62, 44), 1)
+
+    def overlay(self, frame, object_id):
+        frame = cv2.addWeighted(frame, 1, self.background, 0.6, 0)
+        cv2.putText(frame, "Object: %s" % self.class_names[object_id], (20, 395), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                    self.primary_color, 2)
+        cv2.putText(frame, "Key words: %s" % self.keywords[object_id], (45, 420),
+                    cv2.FONT_HERSHEY_DUPLEX,
+                    0.5, self.primary_color, 2)
+        return frame
+
     def draw_bbox(self, image, bboxes, show_label=True):
         """
         bboxes: [x_min, y_min, x_max, y_max, probability, cls_id] format coordinates.
         """
 
-        image_h, image_w, _ = image.shape
+        # image_h, image_w, _ = image.shape
+        #
+        # for i, bbox in enumerate(bboxes):
+        #     coordinates = np.array(bbox[:4], dtype=np.int32)
+        #     fontScale = 0.5
+        #     score = bbox[4]
+        #     class_ind = int(bbox[5])
+        #     bbox_thick = int(0.6 * (image_h + image_w) / 600)
+        #     c1, c2 = (coordinates[0], coordinates[1]), (coordinates[2], coordinates[3])
+        #     cv2.rectangle(image, c1, c2, (255, 0, 0), bbox_thick)
+        #
+        #     if show_label:
+        #         bbox_mess = '%s: %.2f' % (self.class_names[class_ind], score)
+        #         t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
+        #         cv2.rectangle(image, c1, (c1[0] + t_size[0], c1[1] - t_size[1] - 3), (255, 0, 0), -1)  # filled
+        #
+        #         cv2.putText(image, bbox_mess, (c1[0], c1[1] - 2), cv2.FONT_HERSHEY_SIMPLEX,
+        #                     fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
+        # return image
 
         for i, bbox in enumerate(bboxes):
             coordinates = np.array(bbox[:4], dtype=np.int32)
-            fontScale = 0.5
-            score = bbox[4]
-            class_ind = int(bbox[5])
-            bbox_thick = int(0.6 * (image_h + image_w) / 600)
             c1, c2 = (coordinates[0], coordinates[1]), (coordinates[2], coordinates[3])
-            cv2.rectangle(image, c1, c2, (255, 0, 0), bbox_thick)
-
-            if show_label:
-                bbox_mess = '%s: %.2f' % (self.class_names[class_ind], score)
-                t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
-                cv2.rectangle(image, c1, (c1[0] + t_size[0], c1[1] - t_size[1] - 3), (255, 0, 0), -1)  # filled
-
-                cv2.putText(image, bbox_mess, (c1[0], c1[1] - 2), cv2.FONT_HERSHEY_SIMPLEX,
-                            fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
-        return image
+            self.draw_rect(image, c1, c2)
 
 
 def main():
@@ -173,24 +204,28 @@ def main():
     # cv2.imwrite("predicted_yolo.jpg", yolo_result)
     # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
 
-    vid = cv2.VideoCapture(0)
+    vid = cv2.VideoCapture(2)
     vid.set(3, 608)
     vid.set(4, 608)
+
+    times = []
 
     while True:
         ret, frame = vid.read()
         prev_time = time.time()
 
-        bboxes = ve.get_frcnn_prediction(frame)
+        bboxes = ve.get_yolo_prediction(frame)
         ve.draw_bbox(frame, bboxes)
 
         curr_time = time.time()
         exec_time = curr_time - prev_time
-        print("time: %.2f FPS" % (1 / exec_time))
+        # print("time: %.2f FPS" % (1 / exec_time))
+        times.append(exec_time)
         cv2.imshow("Object Detector", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+    print("FPS: %.2f" % (1.0 / np.mean(times)))
     # Clean up
     vid.release()
     cv2.destroyAllWindows()

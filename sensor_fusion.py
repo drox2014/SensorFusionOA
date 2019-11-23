@@ -33,8 +33,7 @@ class FusionEngine:
         self.__vision_engine = VisionEngine()
         self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
         # self.__camera_feed = CameraFeed(0)
-        self.__selection_timer = Timer(100)
-        self.__operation_runtime_frames = 150
+        self.__selection_timer = Timer(20)
 
         # Initialize webcam feed
         self.capture = cv2.VideoCapture(2)
@@ -46,9 +45,6 @@ class FusionEngine:
 
         while True:
             try:
-                # while self.__image_iqueue.qsize() > 3:
-                #     self.get_image()
-
                 image = self.get_image()
                 if not self.__queue.empty():
                     self.__last_operation = self.__queue.get()
@@ -57,86 +53,212 @@ class FusionEngine:
                     self.__image_oqueue.put(image)
                     continue
                 elif self.__last_operation["operation"] == "Locate":
+                    '''Performing locating object - no mixing with gestures'''
+
+                    # Find the objects for given object id with SSD
+                    bboxes = None
+                    self.__image_oqueue.put(image)
+                    while self.__selection_timer.is_running():
+                        print("Searching for objects %d" % self.__selection_timer.count())
+                        image = self.get_image()
+                        bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                        self.__vision_engine.draw_bbox(image, bboxes)
+                        self.__image_oqueue.put(image)
+                    self.__selection_timer.reset()
+
+                    if len(bboxes) == 0:
+                        ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
+                        self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                        while self.__selection_timer.is_running():
+                            print("Searching for objects %d" % self.__selection_timer.count())
+                            image = self.get_image()
+                            bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            self.__vision_engine.draw_bbox(image, bboxes)
+                            self.__image_oqueue.put(image)
+                        self.__selection_timer.reset()
+
+                    # Compare the sizes of found objects and given speech command
+                    if len(bboxes) == 0:
+                        ''' No objects identified with both detectors'''
+                        print("Couldn't find any object...")
+                    elif len(bboxes) == 1:
+                        ''' More than one object identified '''
+                        if self.__last_operation["multiple"]:
+                            ''' Speech command was given to identify multiple objects'''
+                            print("Only one object found...")
+                        else:
+                            ''' Speech command was given to identify only one object'''
+                            print("we found your object...")
+
+                        while self.__selection_timer.is_running():
+                            print("Tracking objects %d" % self.__selection_timer.count())
+                            image = self.get_image()
+                            bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            self.__vision_engine.draw_bbox(image, bboxes)
+                            self.__image_oqueue.put(image)
+                        self.__selection_timer.reset()
+
+                    else:
+                        if self.__last_operation["multiple"]:
+                            ''' Speech command was given to identify multiple objects'''
+                            print("We found your objects...")
+                        else:
+                            ''' Speech command was given to identify only one object'''
+                            print("More than one object found...")
+
+                        while self.__selection_timer.is_running():
+                            print("Tracking objects %d" % self.__selection_timer.count())
+                            image = self.get_image()
+                            bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            self.__vision_engine.draw_bbox(image, bboxes)
+                            self.__image_oqueue.put(image)
+                        self.__selection_timer.reset()
+
+                    self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                    self.__last_operation = None
+                elif self.__last_operation["operation"] == "Describe":
                     if self.__last_operation["pointing"]:
                         ''' Waiting for object selection'''
+
+                        # Find the objects for given object id with SSD
+                        bboxes = None
                         self.__image_oqueue.put(image)
-                        object_bbox = None
-                        # self.__image_iqueue.queue.clear()
                         while self.__selection_timer.is_running():
-                            print("Pointing function %d" % self.__selection_timer.count())
+                            print("Searching for objects %d" % self.__selection_timer.count())
                             image = self.get_image()
-                            bbox = self.point_out(image, self.__last_operation["object_id"])
-                            if bbox is not None:
-                                object_bbox = bbox
+                            bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
-                            # self.__image_iqueue.queue.clear()
                         self.__selection_timer.reset()
-                        self.__last_operation = None
-                        '''Tracking the object'''
 
-                        if object_bbox is not None:
-                            print("Object has been selected...")
-                            bbox = [int(r) for r in object_bbox[:4]]
-                            rect = (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1])
-                            self.track_object(image, rect)
-
-                        continue
-                    else:
-                        bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
                         if len(bboxes) == 0:
-                            ''' No objects identified with current detector'''
+                            ''' No objects identified with SSD. Change the detection algorithm to yolo'''
+                            self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                            while self.__selection_timer.is_running():
+                                print("Searching for objects %d" % self.__selection_timer.count())
+                                image = self.get_image()
+                                bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                self.__vision_engine.draw_bbox(image, bboxes)
+                                self.__image_oqueue.put(image)
+                            self.__selection_timer.reset()
+
+                        if len(bboxes) == 0:
+                            ''' No objects identified with current detector. Change the object detection algorithm to yolo
+                              and verify the existence of objects'''
+                            print("Couldn't find any object...")
+                        elif len(bboxes) == 1:
+                            '''No need of pointing since only one object was found'''
+                            self.__vision_engine.draw_bbox(image, bboxes)
+                            self.__image_oqueue.put(image)
+                            while self.__selection_timer.is_running():
+                                image = self.get_image()
+                                bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                image = self.__vision_engine.overlay(image, self.__last_operation["object_id"])
+                                self.__vision_engine.draw_bbox(image, bboxes)
+                                self.__image_oqueue.put(image)
+                                self.__selection_timer.count()
+                            self.__selection_timer.reset()
+                        else:
+                            '''Pointing should be done to identify the object'''
+                            self.__image_oqueue.put(image)
+                            object_bbox = None
+                            while self.__selection_timer.is_running():
+                                print("Pointing function %d" % self.__selection_timer.count())
+                                image = self.get_image()
+                                bbox = self.point_out(image, self.__last_operation["object_id"])
+                                if bbox is not None:
+                                    object_bbox = bbox
+                                self.__image_oqueue.put(image)
+                            self.__selection_timer.reset()
+
+                            '''Tracking the object'''
+                            if len(bboxes) is not None:
+                                print("Object has been selected...")
+                                bbox = [int(r) for r in object_bbox[:4]]
+                                rect = (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1])
+                                self.track_object(image, rect)
+
+                        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                        self.__last_operation = None
+                    else:
+                        # Find the objects for given object id with SSD
+                        bboxes = None
+                        self.__image_oqueue.put(image)
+                        while self.__selection_timer.is_running():
+                            print("Searching for objects %d" % self.__selection_timer.count())
+                            image = self.get_image()
+                            bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            self.__vision_engine.draw_bbox(image, bboxes)
+                            self.__image_oqueue.put(image)
+                        self.__selection_timer.reset()
+
+                        if len(bboxes) == 0:
+                            ''' No objects identified with SSD. Change the detection algorithm to yolo'''
+                            self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                            while self.__selection_timer.is_running():
+                                print("Searching for objects %d" % self.__selection_timer.count())
+                                image = self.get_image()
+                                bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                self.__vision_engine.draw_bbox(image, bboxes)
+                                self.__image_oqueue.put(image)
+                            self.__selection_timer.reset()
+
+                        if len(bboxes) == 0:
+                            ''' No objects identified with current detector. Change the object detection algorithm to yolo
+                            and verify the existence of objects'''
                             pass
                         elif len(bboxes) == 1:
                             ''' More than one object identified '''
                             if self.__last_operation["multiple"]:
                                 ''' Speech command was given to identify multiple objects'''
-                                print("Ambiguous operation")
+                                print("Only one object found...")
                             else:
                                 ''' Speech command was given to identify only one object'''
-                                # self.__image_iqueue.queue.clear()
+                                print("we found your object...")
+
+                            while self.__selection_timer.is_running():
+                                print("Tracking objects %d" % self.__selection_timer.count())
+                                image = self.get_image()
+                                bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                image = self.__vision_engine.overlay(image, self.__last_operation["object_id"])
                                 self.__vision_engine.draw_bbox(image, bboxes)
                                 self.__image_oqueue.put(image)
-                                while self.__selection_timer.is_running():
-                                    image = self.get_image()
-                                    cv2.putText(image,
-                                                "Timer %d" % self.__selection_timer.count(),
-                                                (100, 80),
-                                                cv2.FONT_HERSHEY_SIMPLEX,
-                                                0.75,
-                                                (0, 0, 255),
-                                                2)
-                                    bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
-                                    self.__vision_engine.draw_bbox(image, bboxes)
-                                    self.__image_oqueue.put(image)
-                                self.__selection_timer.reset()
-                                self.__last_operation = None
-                                continue
+                            self.__selection_timer.reset()
+
                         else:
                             if self.__last_operation["multiple"]:
                                 ''' Speech command was given to identify multiple objects'''
-                                print("Performing multiple object searching operation...")
-                                # self.__image_iqueue.queue.clear()
-                                self.__vision_engine.draw_bbox(image, bboxes)
-                                self.__image_oqueue.put(image)
+                                print("We found your objects...")
                                 while self.__selection_timer.is_running():
+                                    print("Tracking objects %d" % self.__selection_timer.count())
                                     image = self.get_image()
-                                    cv2.putText(image,
-                                                "Timer %d" % self.__selection_timer.count(),
-                                                (100, 80),
-                                                cv2.FONT_HERSHEY_SIMPLEX,
-                                                0.75,
-                                                (0, 0, 255),
-                                                2)
                                     bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                    image = self.__vision_engine.overlay(image, self.__last_operation["object_id"])
                                     self.__vision_engine.draw_bbox(image, bboxes)
                                     self.__image_oqueue.put(image)
                                 self.__selection_timer.reset()
-                                self.__last_operation = None
-                                continue
                             else:
                                 ''' Speech command was given to identify only one object, pointing is required'''
-                                print("Ambiguous operation, please point out the object...")
+                                print("Pointing is required")
+                                object_bbox = None
+                                while self.__selection_timer.is_running():
+                                    print("Pointing function %d" % self.__selection_timer.count())
+                                    image = self.get_image()
+                                    bbox = self.point_out(image, self.__last_operation["object_id"])
+                                    if bbox is not None:
+                                        object_bbox = bbox
+                                    self.__image_oqueue.put(image)
+                                self.__selection_timer.reset()
 
+                                '''Tracking the object'''
+                                if object_bbox is not None:
+                                    print("Object has been selected...")
+                                    bbox = [int(r) for r in object_bbox[:4]]
+                                    rect = (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1])
+                                    self.track_object(image, rect)
+
+                        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                        self.__last_operation = None
                 self.__image_oqueue.put(image)
             except KeyboardInterrupt:
                 break
@@ -189,6 +311,7 @@ class FusionEngine:
         while self.__selection_timer.is_running():
             image = self.get_image()
             res, bbox = tracker.update(image)
+            image = self.__vision_engine.overlay(image, self.__last_operation["object_id"])
             if res:
                 p1 = (int(bbox[0]), int(bbox[1]))
                 p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
