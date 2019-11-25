@@ -32,7 +32,7 @@ class FusionEngine:
         self.__queue = _queue
         self.__vision_engine = VisionEngine()
         self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
-        # self.__camera_feed = CameraFeed(0)
+        self.__is_zoomed = False
         self.__selection_timer = Timer(20)
 
         # Initialize webcam feed
@@ -62,6 +62,7 @@ class FusionEngine:
                         print("Searching for objects %d" % self.__selection_timer.count())
                         image = self.get_image()
                         bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                        cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                         self.__vision_engine.draw_bbox(image, bboxes)
                         self.__image_oqueue.put(image)
                     self.__selection_timer.reset()
@@ -73,6 +74,7 @@ class FusionEngine:
                             print("Searching for objects %d" % self.__selection_timer.count())
                             image = self.get_image()
                             bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                             self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
                         self.__selection_timer.reset()
@@ -94,6 +96,8 @@ class FusionEngine:
                             print("Tracking objects %d" % self.__selection_timer.count())
                             image = self.get_image()
                             bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            cv2.putText(image, "Tracking...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255),
+                                        2)
                             self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
                         self.__selection_timer.reset()
@@ -110,6 +114,8 @@ class FusionEngine:
                             print("Tracking objects %d" % self.__selection_timer.count())
                             image = self.get_image()
                             bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            cv2.putText(image, "Tracking...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255),
+                                        2)
                             self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
                         self.__selection_timer.reset()
@@ -127,6 +133,8 @@ class FusionEngine:
                             print("Searching for objects %d" % self.__selection_timer.count())
                             image = self.get_image()
                             bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255),
+                                        2)
                             self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
                         self.__selection_timer.reset()
@@ -138,6 +146,8 @@ class FusionEngine:
                                 print("Searching for objects %d" % self.__selection_timer.count())
                                 image = self.get_image()
                                 bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                            (0, 0, 255), 2)
                                 self.__vision_engine.draw_bbox(image, bboxes)
                                 self.__image_oqueue.put(image)
                             self.__selection_timer.reset()
@@ -154,6 +164,8 @@ class FusionEngine:
                                 image = self.get_image()
                                 bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
                                 image = self.__vision_engine.overlay(image, self.__last_operation["object_id"])
+                                cv2.putText(image, "Tracking...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                            (0, 0, 255), 2)
                                 self.__vision_engine.draw_bbox(image, bboxes)
                                 self.__image_oqueue.put(image)
                                 self.__selection_timer.count()
@@ -166,6 +178,8 @@ class FusionEngine:
                                 print("Pointing function %d" % self.__selection_timer.count())
                                 image = self.get_image()
                                 bbox = self.point_out(image, self.__last_operation["object_id"])
+                                cv2.putText(image, "Point out the object...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                            (0, 0, 255), 2)
                                 if bbox is not None:
                                     object_bbox = bbox
                                 self.__image_oqueue.put(image)
@@ -188,6 +202,8 @@ class FusionEngine:
                             print("Searching for objects %d" % self.__selection_timer.count())
                             image = self.get_image()
                             bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                            cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255),
+                                        2)
                             self.__vision_engine.draw_bbox(image, bboxes)
                             self.__image_oqueue.put(image)
                         self.__selection_timer.reset()
@@ -199,6 +215,8 @@ class FusionEngine:
                                 print("Searching for objects %d" % self.__selection_timer.count())
                                 image = self.get_image()
                                 bboxes = self.__default_object_detector(image, self.__last_operation["object_id"])
+                                cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                            (0, 0, 255), 2)
                                 self.__vision_engine.draw_bbox(image, bboxes)
                                 self.__image_oqueue.put(image)
                             self.__selection_timer.reset()
@@ -245,6 +263,9 @@ class FusionEngine:
                                     print("Pointing function %d" % self.__selection_timer.count())
                                     image = self.get_image()
                                     bbox = self.point_out(image, self.__last_operation["object_id"])
+                                    cv2.putText(image, "Point out the object...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX,
+                                                0.75,
+                                                (0, 0, 255), 2)
                                     if bbox is not None:
                                         object_bbox = bbox
                                     self.__image_oqueue.put(image)
@@ -259,6 +280,12 @@ class FusionEngine:
 
                         self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
                         self.__last_operation = None
+                elif self.__last_operation["operation"] == "ZoomIn":
+                    self.__is_zoomed = True
+                    self.__last_operation = None
+                elif self.__last_operation["operation"] == "ZoomOut":
+                    self.__is_zoomed = False
+                    self.__last_operation = None
                 self.__image_oqueue.put(image)
             except KeyboardInterrupt:
                 break
@@ -302,6 +329,12 @@ class FusionEngine:
 
     def get_image(self):
         ret, frame = self.capture.read()
+        if self.__is_zoomed:
+            # get the webcam size
+            height, width, channels = frame.shape
+
+            frame = frame[50:height - 50, 50:width - 50]
+            frame = cv2.resize(frame, (width, height))
         return frame
 
     def track_object(self, image, rect):
@@ -319,7 +352,7 @@ class FusionEngine:
             else:
                 cv2.putText(image,
                             "Tracking Failed",
-                            (100, 80),
+                            (20, 20),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.75,
                             (0, 0, 255),

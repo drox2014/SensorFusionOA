@@ -39,9 +39,8 @@ class GestureEngine:
                 if len(gesture_sequence) > 270:
                     prediction = model.predict(gesture_sequence[:270].reshape(1, 1, 270))
                     gesture = np.argmax(prediction)
-                    # self.camera_feed.perform(gesture)
-                    # print(gesture)
-                    if self.prev_gesture != gesture:
+                    print(gesture)
+                    if self.prev_gesture != gesture and gesture not in [0, 4]:
                         self.queue.put({"operation": self.command_classes[gesture]})
                         self.prev_gesture = gesture
 
@@ -61,15 +60,18 @@ class GestureEngine:
         tf.keras.backend.set_session(session)
         model = tf.keras.models.load_model("./data/gesture_lstm_v9.h5")
         controller = Leap.Controller()
+        controller.set_policy_flags(Leap.Controller.POLICY_OPTIMIZE_HMD)
         try:
             self.run(controller, model)
         except KeyboardInterrupt:
             print("GestureEngine:KeyboardInterrupt")
             os.kill(os.getpid(), signal.SIGKILL)
 
-# def main():
-#     GestureEngine()
-#
-#
-# if __name__ == '__main__':
-#     main()
+
+def main():
+    ge = GestureEngine(queue=Queue())
+    ge.start_prediction()
+
+
+if __name__ == '__main__':
+    main()
