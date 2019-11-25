@@ -58,7 +58,7 @@ class GestureEngine:
                                 device_count={'CPU': 2, 'GPU': 0})
         session = tf.Session(config=config)
         tf.keras.backend.set_session(session)
-        model = tf.keras.models.load_model("./data/gesture_lstm_v9.h5")
+        model = tf.keras.models.load_model("./data/models/gesture_lstm_v9.h5")
         controller = Leap.Controller()
         controller.set_policy_flags(Leap.Controller.POLICY_OPTIMIZE_HMD)
         try:
