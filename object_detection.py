@@ -155,10 +155,10 @@ class VisionEngine:
     def overlay(self, frame, object_id):
         frame = cv2.addWeighted(frame, 1, self.background, 0.6, 0)
         cv2.putText(frame, "Object: %s" % self.class_names[object_id], (20, 395), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                    self.primary_color, 2)
+                    self.primary_color, 1)
         cv2.putText(frame, "Key words: %s" % self.keywords[object_id], (45, 420),
                     cv2.FONT_HERSHEY_DUPLEX,
-                    0.5, self.primary_color, 2)
+                    0.5, self.primary_color, 1)
         return frame
 
     def draw_bbox(self, image, bboxes, show_label=True):
@@ -204,7 +204,7 @@ def main():
     # cv2.imwrite("predicted_yolo.jpg", yolo_result)
     # cv2.imwrite("predicted_rcnn.jpg", rcnn_result)
 
-    vid = cv2.VideoCapture(2)
+    vid = cv2.VideoCapture(0)
     vid.set(3, 608)
     vid.set(4, 608)
 
@@ -214,7 +214,7 @@ def main():
         ret, frame = vid.read()
         prev_time = time.time()
 
-        bboxes = ve.get_yolo_prediction(frame)
+        bboxes = ve.get_frcnn_prediction(frame)
         ve.draw_bbox(frame, bboxes)
 
         curr_time = time.time()

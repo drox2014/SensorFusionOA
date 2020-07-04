@@ -4,6 +4,8 @@ import visualizer
 import cv2
 import numpy as np
 from multiprocessing import Queue
+from utils.logger import Logger
+
 
 class Timer:
     def __init__(self, counter=100):
@@ -31,6 +33,7 @@ class FusionEngine:
         self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
         self.__is_zoomed = False
         self.__selection_timer = Timer(50)
+        self.__logger = Logger("frame")
 
         # Initialize webcam feed
         self.capture = cv2.VideoCapture(2)
@@ -65,7 +68,7 @@ class FusionEngine:
                     # Compare the sizes of found objects and given speech command
                     if len(bboxes) == 0:
                         ''' No objects identified with both detectors'''
-                        print("Couldn't find any object...")
+                        self.show_message("No such object found...")
                     elif len(bboxes) == 1:
                         ''' More than one object identified '''
                         if self.__last_operation["multiple"]:
@@ -85,40 +88,30 @@ class FusionEngine:
                 elif self.__last_operation["operation"] == "Describe":
                     self.__image_oqueue.put(image)
 
-                    # Find the objects for given object id with SSD
-                    bboxes = self.search_objects(self.__last_operation["object_id"])
-
-                    if len(bboxes) == 0:
-                        ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
-                        self.__default_object_detector = self.__vision_engine.get_yolo_prediction
-                        bboxes = self.search_objects(self.__last_operation["object_id"])
-                        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
-
                     if self.__last_operation["pointing"]:
-                        ''' Waiting for object selection'''
+                        '''Pointing should be done to identify the object'''
+                        object_bbox = self.get_selection(self.__last_operation["object_id"])
 
-                        if len(bboxes) == 0:
-                            ''' No objects identified with current detector. Change the object detection algorithm to yolo
-                              and verify the existence of objects'''
-                            print("Couldn't find any object...")
-                        elif len(bboxes) == 1:
-                            '''No need of pointing since only one object was found'''
-                            self.track_objects(bboxes, image, "Object found...", True)
-                        else:
-                            '''Pointing should be done to identify the object'''
-                            object_bbox = self.get_selection(self.__last_operation["object_id"])
-
-                            '''Tracking the object'''
-                            if object_bbox is not None:
-                                self.track_objects([object_bbox], image, "Object has been selected...", True)
+                        '''Tracking the object'''
+                        if object_bbox is not None:
+                            self.track_objects([object_bbox], image, "Object has been selected...", True)
 
                         self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
                         self.__last_operation = None
                     else:
+                        # Find the objects for given object id with SSD
+                        bboxes = self.search_objects(self.__last_operation["object_id"])
+
+                        if len(bboxes) == 0:
+                            ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
+                            self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                            bboxes = self.search_objects(self.__last_operation["object_id"])
+                            self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+
                         if len(bboxes) == 0:
                             ''' No objects identified with current detector. Change the object detection algorithm to yolo
                             and verify the existence of objects'''
-                            pass
+                            self.show_message("No such object found...")
                         elif len(bboxes) == 1:
                             ''' More than one object identified '''
                             if self.__last_operation["multiple"]:
@@ -148,6 +141,7 @@ class FusionEngine:
                 self.__last_operation = None
 
             except KeyboardInterrupt:
+                self.__logger.close()
                 break
         self.capture.release()
 
@@ -203,6 +197,7 @@ class FusionEngine:
             trackers.add(tracker, image, rect)
 
         while self.__selection_timer.is_running():
+            self.__logger.start()
             image = self.get_image()
             success, bboxes = trackers.update(image)
             if overlay:
@@ -222,26 +217,31 @@ class FusionEngine:
                             (0, 0, 255),
                             2)
             self.__image_oqueue.put(image)
+            self.__logger.checkpoint("track for %d objects" % len(bboxes))
             self.__selection_timer.count()
 
         self.__selection_timer.reset()
+        self.__logger.save()
 
     def search_objects(self, object_id):
         bboxes = None
         while self.__selection_timer.is_running():
-            print("Searching for objects %d" % self.__selection_timer.count())
+            self.__selection_timer.count()
+            self.__logger.start()
             image = self.get_image()
             bboxes = self.__default_object_detector(image, object_id)
             cv2.putText(image, "Searching...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
             self.__vision_engine.draw_bbox(image, bboxes)
             self.__image_oqueue.put(image)
+            self.__logger.checkpoint("search for %d objects" % len(bboxes))
         self.__selection_timer.reset()
+        self.__logger.save()
         return bboxes
 
     def get_selection(self, object_id):
         object_bbox = None
         while self.__selection_timer.is_running():
-            print("Pointing function %d" % self.__selection_timer.count())
+            self.__selection_timer.count()
             image = self.get_image()
             bbox = self.point_out(image, object_id)
             cv2.putText(image, "Point out the object...", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
@@ -250,6 +250,14 @@ class FusionEngine:
             self.__image_oqueue.put(image)
         self.__selection_timer.reset()
         return object_bbox
+
+    def show_message(self, message):
+        while self.__selection_timer.is_running():
+            self.__selection_timer.count()
+            image = self.get_image()
+            cv2.putText(image, message, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+            self.__image_oqueue.put(image)
+        self.__selection_timer.reset()
 
 
 if __name__ == '__main__':

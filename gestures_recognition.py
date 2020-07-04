@@ -39,7 +39,6 @@ class GestureEngine:
                 if len(gesture_sequence) > 270:
                     prediction = model.predict(gesture_sequence[:270].reshape(1, 1, 270))
                     gesture = np.argmax(prediction)
-                    print(gesture)
                     if self.prev_gesture != gesture and gesture not in [0, 4]:
                         self.queue.put({"operation": self.command_classes[gesture]})
                         self.prev_gesture = gesture

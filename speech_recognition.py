@@ -1,6 +1,7 @@
 from zamia.decode_mic import *
 from multiprocessing import Queue
 import os
+from utils.logger import Logger
 
 
 class SpeechEngine:
@@ -8,6 +9,8 @@ class SpeechEngine:
         self.sr = SpeechRecognizer()
         self.asr = self.sr.init_asr_kaldi()
         self.__queue = queue
+        self.__logger_speech = Logger("speech")
+        self.__logger_text = Logger("text")
 
     def start_recognition(self):
         from text_classification import TextClassificationEngine
@@ -31,9 +34,14 @@ class SpeechEngine:
                 elif started is True:
                     # The limit was reached, finish capture and deliver.
                     filename = self.sr.save_speech(list(prev_audio) + audio2send, p)
+                    timestamp = self.__logger_speech.start()
                     text = self.sr.recognize_speech(self.asr)
+                    self.__logger_speech.checkpoint(text)
                     print(text)
+                    self.sr.save_speech_log(list(prev_audio) + audio2send, p, timestamp)
+                    self.__logger_text.start()
                     sentiment = te.get_sentiment(text)
+                    self.__logger_text.checkpoint(text)
                     if sentiment:
                         self.__queue.put(sentiment)
                         print("[Speech] Detected speech: %s [%s]" % (text, sentiment["operation"]))
@@ -49,6 +57,10 @@ class SpeechEngine:
                 else:
                     prev_audio.append(cur_data)
             except KeyboardInterrupt:
+                self.__logger_text.save()
+                self.__logger_text.close()
+                self.__logger_speech.save()
+                self.__logger_speech.close()
                 break
 
         stream.stop_stream()

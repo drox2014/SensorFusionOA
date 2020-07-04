@@ -1,5 +1,5 @@
 import cv2
-
+import time
 
 def stream(fusion_engine):
 
@@ -13,9 +13,12 @@ def stream(fusion_engine):
         elif key == ord('a'):
             fusion_engine.enqueue_command({"operation": "Describe", "object_id": 3, "multiple": False, "pointing": False})
         elif key == ord('b'):
-            fusion_engine.enqueue_command({"operation": "Describe", "object_id": 3, "multiple": True, "pointing": False})
+            fusion_engine.enqueue_command({"operation": "Locate", "object_id": 3, "multiple": True, "pointing": False})
         elif key == ord('c'):
-            fusion_engine.enqueue_command({"operation": "Describe", "object_id": 3, "multiple": False, "pointing": True})
+            fusion_engine.enqueue_command({"operation": "Locate", "object_id": 3, "multiple": False, "pointing": False})
+
+        elif key == ord('s'):
+            cv2.imwrite("%d.png" % time.time(), frame)
         # Clean up
     cv2.destroyAllWindows()
 

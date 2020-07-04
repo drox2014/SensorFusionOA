@@ -8,6 +8,7 @@ import os
 import re
 import wave
 from collections import deque
+from time import time
 
 import kaldi
 import pyaudio
@@ -86,6 +87,20 @@ class SpeechRecognizer:
         wf.close()
         return filename
 
+    def save_speech_log(self, data, p, timestamp):
+        """ Saves mic data to temporary WAV file. Returns filename of saved
+            file """
+        filename = os.path.join("/home/darshanakg/utterences", "%d.wav" % timestamp)
+        # writes data to WAV file
+        _data = b''.join(data)
+        wf = wave.open(filename, 'wb')
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(p.get_sample_size(FORMAT))
+        wf.setframerate(RATE)
+        wf.writeframes(_data)
+        wf.close()
+        return filename
+
     def recognize_speech(self, asr):
         # Define feature pipelines as Kaldi rspecifiers
         feats_rspec = (
@@ -96,8 +111,8 @@ class SpeechRecognizer:
         )
         ivectors_rspec = (
                 "ark:compute-mfcc-feats --config=" + self.__dir_path + "/aspire_new/modified/conf/mfcc_hires.conf scp:" + self.__dir_path + "/aspire_new/data/test/wav.scp ark:- | "
-                "ivector-extract-online2 --config=" + self.__dir_path + "/aspire_new/modified/conf/ivector_extractor.conf ark:" + self.__dir_path + "/aspire_new/data/test/spk2utt "
-                "ark:- ark:- |"
+                                                                                                                                            "ivector-extract-online2 --config=" + self.__dir_path + "/aspire_new/modified/conf/ivector_extractor.conf ark:" + self.__dir_path + "/aspire_new/data/test/spk2utt "
+                                                                                                                                                                                                                                                                                "ark:- ark:- |"
                 % {
                     "path": self.__dir_path + '/aspire_new/modified'
                 }
