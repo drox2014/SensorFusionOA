@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from multiprocessing import Queue
 from utils.logger import Logger
+from config import config
 
 
 class Timer:
@@ -25,20 +26,23 @@ class Timer:
 
 class FusionEngine:
     def __init__(self, _queue: Queue):
-        from object_detection import VisionEngine
+        from object_detection_demo import VisionEngine
         self.__image_oqueue = queue.Queue(5)
         self.__last_operation = None
         self.__queue = _queue
         self.__vision_engine = VisionEngine()
-        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+        if config.VH == 1:
+            self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+        else:
+            self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
         self.__is_zoomed = False
-        self.__selection_timer = Timer(50)
+        self.__selection_timer = Timer(5)
         self.__logger = Logger("frame")
 
         # Initialize webcam feed
-        self.capture = cv2.VideoCapture(2)
-        self.capture.set(3, 608)
-        self.capture.set(4, 608)
+        # self.capture = cv2.VideoCapture(0)
+        # self.capture.set(3, 608)
+        # self.capture.set(4, 608)
 
         # _thread.start_new_thread(self.__camera_feed.start_feed, (self,))
         _thread.start_new_thread(visualizer.stream, (self,))
@@ -59,11 +63,11 @@ class FusionEngine:
                     self.__image_oqueue.put(image)
                     bboxes = self.search_objects(self.__last_operation["object_id"])
 
-                    if len(bboxes) == 0:
-                        ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
-                        self.__default_object_detector = self.__vision_engine.get_yolo_prediction
-                        bboxes = self.search_objects(self.__last_operation["object_id"])
-                        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                    # if len(bboxes) == 0:
+                    #     ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
+                    #     self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                    #     bboxes = self.search_objects(self.__last_operation["object_id"])
+                    #     self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
 
                     # Compare the sizes of found objects and given speech command
                     if len(bboxes) == 0:
@@ -73,40 +77,40 @@ class FusionEngine:
                         ''' More than one object identified '''
                         if self.__last_operation["multiple"]:
                             ''' Speech command was given to identify multiple objects'''
-                            self.track_objects(bboxes, image, "Only one object found...")
+                            self.track_objects(bboxes, image, self.__last_operation["object_id"], "Only one object found...")
                         else:
                             ''' Speech command was given to identify only one object'''
-                            self.track_objects(bboxes, image, "we found your object...")
+                            self.track_objects(bboxes, image, self.__last_operation["object_id"], "we found your object...")
                     else:
                         if self.__last_operation["multiple"]:
                             ''' Speech command was given to identify multiple objects'''
-                            self.track_objects(bboxes, image, "Objects found...")
+                            self.track_objects(bboxes, image, self.__last_operation["object_id"], "Objects found...")
                         else:
                             ''' Speech command was given to identify only one object'''
-                            self.track_objects(bboxes, image, "More than one object found...")
+                            self.track_objects(bboxes, image, self.__last_operation["object_id"], "More than one object found...")
 
                 elif self.__last_operation["operation"] == "Describe":
                     self.__image_oqueue.put(image)
 
                     if self.__last_operation["pointing"]:
                         '''Pointing should be done to identify the object'''
-                        object_bbox = self.get_selection(self.__last_operation["object_id"])
+                        # object_bbox = self.get_selection(self.__last_operation["object_id"])
+                        #
+                        # '''Tracking the object'''
+                        # if object_bbox is not None:
+                        #     self.track_objects([object_bbox], image, self.__last_operation["object_id"], "Object has been selected...", True)
 
-                        '''Tracking the object'''
-                        if object_bbox is not None:
-                            self.track_objects([object_bbox], image, "Object has been selected...", True)
-
-                        self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                        # self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
                         self.__last_operation = None
                     else:
                         # Find the objects for given object id with SSD
                         bboxes = self.search_objects(self.__last_operation["object_id"])
 
-                        if len(bboxes) == 0:
-                            ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
-                            self.__default_object_detector = self.__vision_engine.get_yolo_prediction
-                            bboxes = self.search_objects(self.__last_operation["object_id"])
-                            self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
+                        # if len(bboxes) == 0:
+                        #     ''' No objects identified with SSD. Change the detecion algorithm to yolo'''
+                        #     self.__default_object_detector = self.__vision_engine.get_yolo_prediction
+                        #     bboxes = self.search_objects(self.__last_operation["object_id"])
+                        #     self.__default_object_detector = self.__vision_engine.get_frcnn_prediction
 
                         if len(bboxes) == 0:
                             ''' No objects identified with current detector. Change the object detection algorithm to yolo
@@ -116,22 +120,22 @@ class FusionEngine:
                             ''' More than one object identified '''
                             if self.__last_operation["multiple"]:
                                 ''' Speech command was given to identify multiple objects'''
-                                self.track_objects(bboxes, image, "Only one object found...", True)
+                                self.track_objects(bboxes, image, self.__last_operation["object_id"], "Only one object found...", True)
                             else:
                                 ''' Speech command was given to identify only one object'''
-                                self.track_objects(bboxes, image, "Object found...", True)
+                                self.track_objects(bboxes, image, self.__last_operation["object_id"], "Object found...", True)
                         else:
                             if self.__last_operation["multiple"]:
                                 ''' Speech command was given to identify multiple objects'''
-                                self.track_objects(bboxes, image, "Objects found...", True)
+                                self.track_objects(bboxes, image, self.__last_operation["object_id"], "Objects found...", True)
                             else:
                                 ''' Speech command was given to identify only one object, pointing is required'''
                                 '''Pointing should be done to identify the object'''
-                                object_bbox = self.get_selection(self.__last_operation["object_id"])
-
-                                '''Tracking the object'''
-                                if object_bbox is not None:
-                                    self.track_objects([object_bbox], image, "Object has been selected...", True)
+                                # object_bbox = self.get_selection(self.__last_operation["object_id"])
+                                #
+                                # '''Tracking the object'''
+                                # if object_bbox is not None:
+                                #     self.track_objects([object_bbox], image, self.__last_operation["object_id"], "Object has been selected...", True)
 
                 elif self.__last_operation["operation"] == "ZoomIn":
                     self.__is_zoomed = True
@@ -143,7 +147,7 @@ class FusionEngine:
             except KeyboardInterrupt:
                 self.__logger.close()
                 break
-        self.capture.release()
+        # self.capture.release()
 
     def point_out(self, image, object_id):
         bboxes = self.__vision_engine.get_yolo_prediction(image, object_id=object_id, pointing=True)
@@ -178,8 +182,9 @@ class FusionEngine:
     def enqueue_command(self, command):
         self.__queue.put(command)
 
-    def get_image(self):
-        ret, frame = self.capture.read()
+    def get_image(self, object_id=10):
+        # ret, frame = self.capture.read()
+        frame = cv2.imread("images/%d.jpg" % object_id)
         if self.__is_zoomed:
             # get the webcam size
             height, width, channels = frame.shape
@@ -188,7 +193,8 @@ class FusionEngine:
             frame = cv2.resize(frame, (width, height))
         return frame
 
-    def track_objects(self, bboxes, image, message, overlay=False):
+    def track_objects(self, bboxes, image, object_id, message, overlay=False):
+        self.__logger.add_flog("object_tracking")
         trackers = cv2.MultiTracker_create()
         for bbox in bboxes:
             bbox = [int(r) for r in bbox[:4]]
@@ -225,6 +231,7 @@ class FusionEngine:
 
     def search_objects(self, object_id):
         bboxes = None
+        self.__logger.add_flog("object_detection")
         while self.__selection_timer.is_running():
             self.__selection_timer.count()
             self.__logger.start()

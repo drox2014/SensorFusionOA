@@ -1,5 +1,5 @@
 import os
-import time
+
 import cv2
 import numpy as np
 import tensorflow as tf
@@ -15,6 +15,7 @@ def get_keywords():
 
 class VisionEngine:
     def __init__(self):
+        from config import config
         # define paths to load the models
         self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'ssd_inception_v7.pb')
         self.PATH_TO_YOLO_CKPT = os.path.join('data', 'models', 'yolo_v3.pb')
@@ -22,6 +23,7 @@ class VisionEngine:
         # define constants
         self.NUM_CLASSES = 10
         self.INPUT_SIZE = 608
+        self.VH = config.VH
         # load the label map
         # self.category_index = label_map_util.create_category_index_from_labelmap(self.PATH_TO_LABELS_TFOD_API,
         #                                                                          use_display_name=True)
@@ -31,7 +33,7 @@ class VisionEngine:
         self.yolo_mapping = {1: 6, 2: 4, 3: 0, 4: 3, 5: 7, 6: 9, 7: 5, 8: 8, 9: 1, 10: 2}
 
         self.background = cv2.imread("data/overlay-ar.png")
-        self.background = cv2.resize(self.background, (640, 480))
+        self.background = cv2.resize(self.background, (672, 504))
         self.primary_color = (60, 76, 231)
 
         # Load the models into session
@@ -39,31 +41,34 @@ class VisionEngine:
         self.graph_def = tf.GraphDef()
 
         with self.detection_graph.as_default():
-            with tf.gfile.GFile(self.PATH_TO_FRCNN_CKPT, 'rb') as fid:
-                od_graph_def = tf.GraphDef()
-                serialized_graph = fid.read()
-                od_graph_def.ParseFromString(serialized_graph)
-                tf.import_graph_def(od_graph_def, name='')
-
-            with tf.gfile.GFile(self.PATH_TO_YOLO_CKPT, 'rb') as fid:
-                od_graph_def = tf.GraphDef()
-                serialized_graph = fid.read()
-                od_graph_def.ParseFromString(serialized_graph)
-                tf.import_graph_def(od_graph_def, name='')
+            if self.VH == 1:
+                with tf.gfile.GFile(self.PATH_TO_YOLO_CKPT, 'rb') as fid:
+                    od_graph_def = tf.GraphDef()
+                    serialized_graph = fid.read()
+                    od_graph_def.ParseFromString(serialized_graph)
+                    tf.import_graph_def(od_graph_def, name='')
+            else:
+                with tf.gfile.GFile(self.PATH_TO_FRCNN_CKPT, 'rb') as fid:
+                    od_graph_def = tf.GraphDef()
+                    serialized_graph = fid.read()
+                    od_graph_def.ParseFromString(serialized_graph)
+                    tf.import_graph_def(od_graph_def, name='')
 
         config = tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.9))
         config.gpu_options.allow_growth = True
 
         self.sess = tf.Session(config=config, graph=self.detection_graph)
-        self.yolo_tensors = self.get_tensors(tensor_names=["input/input_data:0",
-                                                           "pred_sbbox/concat_2:0",
-                                                           "pred_mbbox/concat_2:0",
-                                                           "pred_lbbox/concat_2:0"])
-        self.frcnn_tensors = self.get_tensors(tensor_names=["image_tensor:0",
-                                                            "detection_boxes:0",
-                                                            "detection_scores:0",
-                                                            "detection_classes:0",
-                                                            "num_detections:0"])
+        if self.VH == 1:
+            self.yolo_tensors = self.get_tensors(tensor_names=["input/input_data:0",
+                                                               "pred_sbbox/concat_2:0",
+                                                               "pred_mbbox/concat_2:0",
+                                                               "pred_lbbox/concat_2:0"])
+        else:
+            self.frcnn_tensors = self.get_tensors(tensor_names=["image_tensor:0",
+                                                                "detection_boxes:0",
+                                                                "detection_scores:0",
+                                                                "detection_classes:0",
+                                                                "num_detections:0"])
 
     def get_tensors(self, tensor_names):
         return [self.detection_graph.get_tensor_by_name(n) for n in tensor_names]
@@ -87,7 +92,7 @@ class VisionEngine:
             self.frcnn_tensors[4]
         ], feed_dict={self.frcnn_tensors[0]: image_expanded})
         if object_id:
-            return self.frcnn_bboxes_filter(image, scores, classes, boxes, num, 0.75, object_id)
+            return self.frcnn_bboxes_filter(image, scores, classes, boxes, num, 0.45, object_id)
         return self.frcnn_bboxes(image, scores, classes, boxes, num, 0.45)
 
     def yolo_preporcess(self, image):
@@ -166,71 +171,7 @@ class VisionEngine:
         bboxes: [x_min, y_min, x_max, y_max, probability, cls_id] format coordinates.
         """
 
-        # image_h, image_w, _ = image.shape
-        #
-        # for i, bbox in enumerate(bboxes):
-        #     coordinates = np.array(bbox[:4], dtype=np.int32)
-        #     fontScale = 0.5
-        #     score = bbox[4]
-        #     class_ind = int(bbox[5])
-        #     bbox_thick = int(0.6 * (image_h + image_w) / 600)
-        #     c1, c2 = (coordinates[0], coordinates[1]), (coordinates[2], coordinates[3])
-        #     cv2.rectangle(image, c1, c2, (255, 0, 0), bbox_thick)
-        #
-        #     if show_label:
-        #         bbox_mess = '%s: %.2f' % (self.class_names[class_ind], score)
-        #         t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
-        #         cv2.rectangle(image, c1, (c1[0] + t_size[0], c1[1] - t_size[1] - 3), (255, 0, 0), -1)  # filled
-        #
-        #         cv2.putText(image, bbox_mess, (c1[0], c1[1] - 2), cv2.FONT_HERSHEY_SIMPLEX,
-        #                     fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
-        # return image
-
         for i, bbox in enumerate(bboxes):
             coordinates = np.array(bbox[:4], dtype=np.int32)
             c1, c2 = (coordinates[0], coordinates[1]), (coordinates[2], coordinates[3])
             self.draw_rect(image, c1, c2)
-
-
-def main():
-    ve = VisionEngine()
-    for image_name in os.listdir("/home/darshanakg/sample_images/scaled"):
-        frame = cv2.imread(os.path.join("/home/darshanakg/sample_images/scaled", image_name))
-        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        print(image_name)
-        bboxes = ve.get_yolo_prediction(frame)
-        [print(ve.class_names[int(i[5])]) for i in bboxes]
-        ve.draw_bbox(frame, bboxes)
-
-        ve.draw_bbox(frame, bboxes)
-        cv2.imwrite("/home/darshanakg/sample_images/predictions/%s_rcnn_2.jpg" % image_name.replace(".jpg", ""), frame)
-
-    # vid = cv2.VideoCapture(0)
-    # vid.set(3, 608)
-    # vid.set(4, 608)
-    #
-    # times = []
-    #
-    # while True:
-    #     ret, frame = vid.read()
-    #     prev_time = time.time()
-    #
-    #     bboxes = ve.get_frcnn_prediction(frame)
-    #     ve.draw_bbox(frame, bboxes)
-    #
-    #     curr_time = time.time()
-    #     exec_time = curr_time - prev_time
-    #     # print("time: %.2f FPS" % (1 / exec_time))
-    #     times.append(exec_time)
-    #     cv2.imshow("Object Detector", frame)
-    #     if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         break
-    #
-    # print("FPS: %.2f" % (1.0 / np.mean(times)))
-    # # Clean up
-    # # vid.release()
-    # cv2.destroyAllWindows()
-
-
-if __name__ == '__main__':
-    main()

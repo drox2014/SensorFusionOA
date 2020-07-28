@@ -9,11 +9,11 @@ class LogRecord:
     def save(self, tag, message):
         end_time = datetime.now().timestamp() * 1000
         elapsed_time = end_time - self.__start_time
-        return "%d, %d, %d, %s, %s\n" % (self.__start_time,
-                                         end_time,
-                                         elapsed_time,
-                                         tag,
-                                         message)
+        return "%d,%d,%d,%s,%s\n" % (self.__start_time,
+                                     end_time,
+                                     elapsed_time,
+                                     tag,
+                                     message)
 
     def get_start_time(self):
         return self.__start_time
@@ -32,6 +32,10 @@ class Logger:
 
     def checkpoint(self, message):
         self.__to_write.append(self.__log_record.save(self.__tag, message))
+
+    def add_flog(self, flag):
+        timestamp = datetime.now().timestamp() * 1000
+        self.__to_write.append("%d,%s\n" % (timestamp, flag))
 
     def save(self):
         for i in self.__to_write:

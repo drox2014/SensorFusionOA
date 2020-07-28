@@ -1,9 +1,9 @@
 import time
 from multiprocessing import Process, Queue
 
-from gestures_recognition import GestureEngine
+from gestures_recognition_demo import GestureEngine
 from sensor_fusion import FusionEngine
-from speech_recognition import SpeechEngine
+from speech_recognition_demo import SpeechEngine
 
 
 def start_gesture_recognition(queue: Queue):
@@ -28,8 +28,8 @@ class ProcessManager:
         com_queue = Queue()
         print("Starting Engines...")
 
-        # engines = [start_fusion_engine, start_gesture_recognition, start_speech_engine]
-        engines = [start_fusion_engine, start_gesture_recognition]
+        engines = [start_fusion_engine, start_gesture_recognition, start_speech_engine]
+        # engines = [start_fusion_engine, start_gesture_recognition]
         # engines = [start_fusion_engine, start_speech_engine]
         for engine in engines:
             proc = Process(target=engine, args=(com_queue,))

@@ -3,10 +3,16 @@ import pandas as pd
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from nltk.tokenize import word_tokenize
 import numpy as np
+import os
+import psutil
+from pickle import load
 
 
 class TextClassificationEngine:
     def __init__(self):
+        from config import config
+        self.H = config.TC
+        process = psutil.Process(os.getpid())
         self.__max_words = 50000
         # Max number of words in each complaint.
         self.__max_seq_length = 250
@@ -41,17 +47,41 @@ class TextClassificationEngine:
                                     14: {"operation": None, "object_id": 8, "multiple": False, "pointing": False},
                                     13: {"operation": None, "object_id": 5, "multiple": False, "pointing": False},
                                     16: {"operation": None, "object_id": 2, "multiple": False, "pointing": False}}
+        self.__name_dictionary = {'laptops': {'operation': None, 'object_id': 6, 'multiple': True, 'pointing': False},
+                                  'phones': {'operation': None, 'object_id': 4, 'multiple': True, 'pointing': False},
+                                  'books': {'operation': None, 'object_id': 0, 'multiple': True, 'pointing': False},
+                                  'bottles': {'operation': None, 'object_id': 3, 'multiple': True, 'pointing': False},
+                                  'pens': {'operation': None, 'object_id': 7, 'multiple': True, 'pointing': False},
+                                  'cups': {'operation': None, 'object_id': 9, 'multiple': True, 'pointing': False},
+                                  'keyboards': {'operation': None, 'object_id': 8, 'multiple': True, 'pointing': False},
+                                  'mouses': {'operation': None, 'object_id': 5, 'multiple': True, 'pointing': False},
+                                  'monitors': {'operation': None, 'object_id': 2, 'multiple': True, 'pointing': False},
+                                  'laptop': {'operation': None, 'object_id': 6, 'multiple': False, 'pointing': False},
+                                  'phone': {'operation': None, 'object_id': 4, 'multiple': False, 'pointing': False},
+                                  'book': {'operation': None, 'object_id': 0, 'multiple': False, 'pointing': False},
+                                  'bottle': {'operation': None, 'object_id': 3, 'multiple': False, 'pointing': False},
+                                  'pen': {'operation': None, 'object_id': 7, 'multiple': False, 'pointing': False},
+                                  'cup': {'operation': None, 'object_id': 9, 'multiple': False, 'pointing': False},
+                                  'keyboard': {'operation': None, 'object_id': 8, 'multiple': False, 'pointing': False},
+                                  'mouse': {'operation': None, 'object_id': 5, 'multiple': False, 'pointing': False},
+                                  'monitor': {'operation': None, 'object_id': 2, 'multiple': False, 'pointing': False}}
         self.__labels = ['Locate', 'Describe', 'Invalid']
         self.__dataset_path = "/home/darshanakg/Projects/SensorFusion/zamia/data/dataset.txt"
         self.__tokenizer = self.__init_tokenizer()
-        # Initializing the model
-        config = tf.ConfigProto(intra_op_parallelism_threads=4,
-                                inter_op_parallelism_threads=4,
-                                allow_soft_placement=True,
-                                device_count={'CPU': 2, 'GPU': 0})
-        session = tf.Session(config=config)
-        tf.keras.backend.set_session(session)
-        self.__model = tf.keras.models.load_model("data/models/text_classification_lstm.h5")
+        start = process.memory_info()[0]
+        if self.H == 1:
+            # Initializing the model
+            config = tf.ConfigProto(intra_op_parallelism_threads=4,
+                                    inter_op_parallelism_threads=4,
+                                    allow_soft_placement=True,
+                                    device_count={'CPU': 2, 'GPU': 0})
+            session = tf.Session(config=config)
+            tf.keras.backend.set_session(session)
+            self.__model = tf.keras.models.load_model("data/models/text_classification_lstm.h5")
+        else:
+            self.__svm_model = load(open("data/models/svm_tc.pkl", "rb"))
+        usage = process.memory_info()[0] - start
+        print("[Memory Usage | Text Classification]", usage >> 20)
 
     def __init_tokenizer(self):
         df = pd.read_csv(self.__dataset_path, names=['sentence', 'operation'], sep=',', engine='python')
@@ -90,19 +120,40 @@ class TextClassificationEngine:
         padded = tf.keras.preprocessing.sequence.pad_sequences(seq, maxlen=self.__max_seq_length)
         pred_index = np.argmax(self.__model.predict(padded))
         obj = self.__find_command(seq)
-        if pred_index == 2:
+        if pred_index == 2 or obj["object_id"] == -1:
             return None
 
+        obj["operation"] = self.__labels[pred_index]
+        return obj
+
+    def get_svm_sentiment(self, command):
+        tokens = self.filter_stopwords([command])
+        filtered_commands = self.detokenize(tokens)
+        pred_index = self.__svm_model.predict(filtered_commands)[0] - 1
+        obj = self.__find_command_svm(tokens)
+        if pred_index == 2 or obj["object_id"] == -1:
+            return None
         obj["operation"] = self.__labels[pred_index]
         return obj
 
     def __find_command(self, tokens):
         _pointing = False
         for token in tokens[0]:
-            if token in (1, 79):
-                _pointing = True
+            if token in ("this", "that"):
+                _pointing = False
             elif token in self.__object_dictionary:
                 command = self.__object_dictionary[token]
+                command["pointing"] = _pointing
+                return command
+        return {"object_id": -1, "multiple": False}
+
+    def __find_command_svm(self, tokens):
+        _pointing = False
+        for token in tokens[0]:
+            if token in ["this", "that"]:
+                _pointing = False
+            elif token in self.__name_dictionary:
+                command = self.__name_dictionary[token]
                 command["pointing"] = _pointing
                 return command
         return {"object_id": -1, "multiple": False}

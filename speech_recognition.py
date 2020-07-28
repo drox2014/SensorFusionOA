@@ -2,12 +2,17 @@ from zamia.decode_mic import *
 from multiprocessing import Queue
 import os
 from utils.logger import Logger
+import os
+import psutil
 
 
 class SpeechEngine:
     def __init__(self, queue: Queue):
         self.sr = SpeechRecognizer()
-        self.asr = self.sr.init_asr_kaldi()
+        process = psutil.Process(os.getpid())
+        start = process.memory_info()[0]
+        usage = process.memory_info()[0] - start
+        print("[Memory Usage | Speech Recognition]", usage >> 20)
         self.__queue = queue
         self.__logger_speech = Logger("speech")
         self.__logger_text = Logger("text")
@@ -35,13 +40,13 @@ class SpeechEngine:
                     # The limit was reached, finish capture and deliver.
                     filename = self.sr.save_speech(list(prev_audio) + audio2send, p)
                     timestamp = self.__logger_speech.start()
-                    text = self.sr.recognize_speech(self.asr)
+                    text = self.sr.recognize_speech()
                     self.__logger_speech.checkpoint(text)
-                    print(text)
+                    # print(text)
                     self.sr.save_speech_log(list(prev_audio) + audio2send, p, timestamp)
                     self.__logger_text.start()
                     sentiment = te.get_sentiment(text)
-                    self.__logger_text.checkpoint(text)
+                    # self.__logger_text.checkpoint(text)
                     if sentiment:
                         self.__queue.put(sentiment)
                         print("[Speech] Detected speech: %s [%s]" % (text, sentiment["operation"]))

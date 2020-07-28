@@ -72,6 +72,7 @@ class SpeechRecognizer:
         self.__wave_file = "utt1.wav"
         self.__save_path = self.__dir_path + '/aspire_new/data/test'
         self.__initialize_path()
+        self.__asr = self.init_asr_kaldi()
 
     def save_speech(self, data, p):
         """ Saves mic data to temporary WAV file. Returns filename of saved
@@ -101,7 +102,7 @@ class SpeechRecognizer:
         wf.close()
         return filename
 
-    def recognize_speech(self, asr):
+    def recognize_speech(self):
         # Define feature pipelines as Kaldi rspecifiers
         feats_rspec = (
                 "ark:compute-mfcc-feats --config=" + self.__dir_path + "/aspire_new/modified/conf/mfcc_hires.conf scp:" + self.__dir_path + "/aspire_new/data/test/wav.scp ark:- |"
@@ -122,7 +123,7 @@ class SpeechRecognizer:
         with SequentialMatrixReader(feats_rspec) as f, \
                 SequentialMatrixReader(ivectors_rspec) as i:
             for (key, feats), (_, ivectors) in zip(f, i):
-                out = asr.decode((feats, ivectors))
+                out = self.__asr.decode((feats, ivectors))
                 return out["text"]
 
     def __initialize_path(self):
