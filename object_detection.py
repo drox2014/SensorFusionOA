@@ -16,7 +16,8 @@ def get_keywords():
 class VisionEngine:
     def __init__(self):
         # define paths to load the models
-        self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'ssd_inception_v7.pb')
+        # self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'ssd_inception_v7.pb')
+        self.PATH_TO_FRCNN_CKPT = os.path.join('data', 'models', 'faster_rcnn.pb')
         self.PATH_TO_YOLO_CKPT = os.path.join('data', 'models', 'yolo_v3.pb')
         self.PATH_TO_LABELS_TFOD_API = os.path.join('data', 'classes', 'labels.pbtxt')
         # define constants
@@ -194,42 +195,43 @@ class VisionEngine:
 
 def main():
     ve = VisionEngine()
-    for image_name in os.listdir("/home/darshanakg/sample_images/scaled"):
-        frame = cv2.imread(os.path.join("/home/darshanakg/sample_images/scaled", image_name))
-        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        print(image_name)
-        bboxes = ve.get_yolo_prediction(frame)
-        [print(ve.class_names[int(i[5])]) for i in bboxes]
-        ve.draw_bbox(frame, bboxes)
-
-        ve.draw_bbox(frame, bboxes)
-        cv2.imwrite("/home/darshanakg/sample_images/predictions/%s_rcnn_2.jpg" % image_name.replace(".jpg", ""), frame)
-
-    # vid = cv2.VideoCapture(0)
-    # vid.set(3, 608)
-    # vid.set(4, 608)
-    #
-    # times = []
-    #
-    # while True:
-    #     ret, frame = vid.read()
-    #     prev_time = time.time()
-    #
-    #     bboxes = ve.get_frcnn_prediction(frame)
+    # for image_name in os.listdir("/home/darshanakg/sample_images/scaled"):
+    #     frame = cv2.imread(os.path.join("/home/darshanakg/sample_images/scaled", image_name))
+    #     # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    #     print(image_name)
+    #     bboxes = ve.get_yolo_prediction(frame)
+    #     [print(ve.class_names[int(i[5])]) for i in bboxes]
     #     ve.draw_bbox(frame, bboxes)
     #
-    #     curr_time = time.time()
-    #     exec_time = curr_time - prev_time
-    #     # print("time: %.2f FPS" % (1 / exec_time))
-    #     times.append(exec_time)
-    #     cv2.imshow("Object Detector", frame)
-    #     if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         break
-    #
-    # print("FPS: %.2f" % (1.0 / np.mean(times)))
-    # # Clean up
-    # # vid.release()
-    # cv2.destroyAllWindows()
+    #     ve.draw_bbox(frame, bboxes)
+    #     cv2.imwrite("/home/darshanakg/sample_images/predictions/%s_rcnn_2.jpg" % image_name.replace(".jpg", ""), frame)
+
+    vid = cv2.VideoCapture(0)
+    vid.set(3, 608)
+    vid.set(4, 608)
+
+    times = []
+
+    while True:
+        ret, frame = vid.read()
+        prev_time = time.time()
+
+        bboxes = ve.get_yolo_prediction(frame)
+        ve.draw_bbox(frame, bboxes)
+        print(frame.shape)
+
+        curr_time = time.time()
+        exec_time = curr_time - prev_time
+        print("time: %.2f FPS" % (1 / exec_time))
+        times.append(exec_time)
+        cv2.imshow("Object Detector", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    print("FPS: %.2f" % (1.0 / np.mean(times[5:])))
+    # Clean up
+    vid.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
